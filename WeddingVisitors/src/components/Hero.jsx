@@ -7,46 +7,101 @@ export default function Hero() {
 
   useEffect(() => {
     const video = videoRef.current;
-    if (video) {
-      video.muted = true;
-      video.defaultMuted = true;
-      video.playsInline = true;
-      
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.warn('Autoplay prevented by browser:', err);
+    if (!video) return;
+
+    // 1. Force native HTML attributes strictly required by iOS & Android
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('loop', '');
+
+    // 2. Attempt immediate hardware-accelerated autoplay
+    const attemptPlay = () => {
+      if (video.paused) {
+        video.play().catch((err) => {
+          console.log('Autoplay deferred until user interaction (Low Power Mode active):', err);
         });
       }
-    }
+    };
+
+    attemptPlay();
+
+    // 3. Lifecycle listeners
+    video.addEventListener('loadeddata', attemptPlay);
+    video.addEventListener('canplay', attemptPlay);
+    video.addEventListener('canplaythrough', attemptPlay);
+
+    // 4. Low-Power Mode / Strict Browser Policy bypass on first touch/scroll
+    const handleUserInteraction = () => {
+      attemptPlay();
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('scroll', handleUserInteraction);
+    };
+
+    window.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    window.addEventListener('click', handleUserInteraction, { passive: true });
+    window.addEventListener('scroll', handleUserInteraction, { passive: true });
+
+    return () => {
+      video.removeEventListener('loadeddata', attemptPlay);
+      video.removeEventListener('canplay', attemptPlay);
+      video.removeEventListener('canplaythrough', attemptPlay);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('scroll', handleUserInteraction);
+    };
   }, []);
 
   return (
-    <section className="relative w-full h-[90vh] sm:h-screen flex items-center justify-center overflow-hidden bg-black">
-      
-      {/* 1. Looping Engagement Video (Direct src + z-0) */}
+    <section 
+      className="relative w-full overflow-hidden flex items-center justify-center bg-[#1A080C]"
+      style={{
+        minHeight: '100dvh', // Dynamic viewport height for modern mobile browsers
+        height: '100vh'
+      }}
+    >
+      {/* 1. BACKGROUND VIDEO (Layer 0) */}
       <video
         ref={videoRef}
-        src="/hero-video.mp4"
         autoPlay
         loop
         muted
         playsInline
         preload="auto"
         className="absolute inset-0 w-full h-full object-cover z-0"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center',
+          pointerEvents: 'none'
+        }}
+      >
+        <source src="/hero-video.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+
+      {/* 2. GRADIENT TINT OVERLAY (Layer 1) */}
+      <div 
+        className="absolute inset-0 z-[1] pointer-events-none"
+        style={{
+          background: 'linear-gradient(180deg, rgba(74, 21, 29, 0.45) 0%, rgba(0, 0, 0, 0.25) 40%, rgba(59, 27, 13, 0.7) 100%)'
+        }}
       />
 
-      {/* 2. Clean Overlay (Gives clear wine tint while keeping video bright and visible) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#4A151D]/60 via-black/30 to-[#3B1B0D]/75 z-[1]" />
-
-      {/* 3. Hero Content (z-10 on top of video) */}
-      <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white flex flex-col items-center justify-center">
+      {/* 3. HERO CONTENT CONTAINER (Layer 2) */}
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center text-white flex flex-col items-center justify-center py-12">
         
         {/* Couple Logo */}
         <div className="mb-4 sm:mb-6 animate-fade-in">
           <img
             src="/logo.png"
-            alt="Precious & Bright Logo"
+            alt="Precious & Bright Wedding Logo"
             className="h-24 sm:h-36 md:h-44 w-auto object-contain drop-shadow-[0_4px_16px_rgba(212,175,55,0.6)]"
             onError={(e) => {
               e.target.style.display = 'none';
@@ -55,7 +110,7 @@ export default function Hero() {
         </div>
 
         {/* Subtitle */}
-        <p className="text-xs sm:text-sm md:text-base uppercase tracking-[0.3em] sm:tracking-[0.4em] text-[#F3E5AB] font-medium mb-2 sm:mb-3">
+        <p className="text-xs sm:text-sm md:text-base uppercase tracking-[0.3em] sm:tracking-[0.4em] text-[#F3E5AB] font-medium mb-2 sm:mb-3 drop-shadow">
           Together with their families
         </p>
 
@@ -64,14 +119,14 @@ export default function Hero() {
           Precious <span className="text-[#D4AF37] font-normal">&</span> Bright
         </h1>
 
-        {/* Divider */}
+        {/* Ornamental Divider */}
         <div className="flex items-center justify-center space-x-4 my-3 sm:my-4 w-full">
           <div className="h-[1px] w-16 sm:w-28 bg-[#D4AF37]/80"></div>
           <span className="text-[#D4AF37] text-lg sm:text-xl">❦</span>
           <div className="h-[1px] w-16 sm:w-28 bg-[#D4AF37]/80"></div>
         </div>
 
-        {/* Date & Location preview */}
+        {/* Date & Location */}
         <p className="text-base sm:text-xl md:text-2xl text-white font-medium tracking-wide mb-1 drop-shadow-md">
           Saturday, 15th October 2026
         </p>
@@ -79,7 +134,7 @@ export default function Hero() {
           The Family House of Mr and Mrs Eze • Ibeju-Lekki, Lagos
         </p>
 
-        {/* Action Buttons */}
+        {/* Touch-Friendly Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto px-4 sm:px-0">
           <Link
             to="/rsvp"
@@ -101,7 +156,7 @@ export default function Hero() {
       </div>
 
       {/* Down arrow indicator */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-[#D4AF37] z-10 animate-bounce">
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-[#D4AF37] z-10 animate-bounce pointer-events-none">
         <HiOutlineChevronDoubleDown className="w-6 h-6" />
       </div>
     </section>
