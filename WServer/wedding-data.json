@@ -1,0 +1,17 @@
+{
+  "guests": [
+    {
+      "id": 1790012344761,
+      "full_name": "osazuwa kenneth",
+      "phone": "07035620709",
+      "email": "websiteworkspace8@gmail.com",
+      "unique_code": "KQMQ4Z",
+      "checked_in": true,
+      "registered_at": "2026-09-21T17:39:04.761Z",
+      "checked_in_at": "2026-09-21T17:39:42.533Z"
+    }
+  ],
+   "admin_password": "admin2026",
+  "usher_password": "usher2026",
+  "photos": []
+}

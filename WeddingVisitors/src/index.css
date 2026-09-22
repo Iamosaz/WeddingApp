@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  /* Wedding Color Palette */
+  --color-wine: #722F37;
+  --color-wine-dark: #4A151D;
+  --color-wine-light: #913D46;
+  --color-brown: #5C2C16;
+  --color-brown-dark: #3B1B0D;
+  --color-brown-light: #8B4513;
+  --color-gold: #D4AF37;
+  --color-gold-light: #F3E5AB;
+  --color-cream: #FDFBF7;
+}
+
+@layer base {
+  body {
+    font-family: 'Playfair Display', Georgia, serif;
+    background-color: var(--color-cream);
+    color: #2D2424;
+    overflow-x: hidden;
+  }
+}
