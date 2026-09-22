@@ -1,27 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import confetti from 'canvas-confetti';
-import { FiCheckCircle, FiCopy, FiInfo, FiLock } from 'react-icons/fi';
+import { FiCheckCircle, FiCopy, FiInfo, FiLock, FiUsers } from 'react-icons/fi';
 
 export default function RSVP() {
   const [form, setForm] = useState({ full_name: '', phone: '', email: '' });
   const [guestResult, setGuestResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [slotsLeft, setSlotsLeft] = useState(null);
+
+  const API_URL = import.meta.env.VITE_API_URL || '';
+
+  const fetchSlots = async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/guests/all`);
+      setSlotsLeft(data.maxLimit - data.total);
+    } catch (e) {
+      setSlotsLeft(150);
+    }
+  };
+
+  useEffect(() => {
+    fetchSlots();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/guests/register', form);
+      const response = await axios.post(`${API_URL}/api/guests/register`, form);
       const guest = response.data.guest;
 
       setGuestResult(guest);
       toast.success('Registration Confirmed! 🎉');
+      fetchSlots();
 
-      // Trigger celebratory confetti animation
       confetti({
         particleCount: 120,
         spread: 70,
@@ -31,7 +47,6 @@ export default function RSVP() {
     } catch (err) {
       const errorData = err.response?.data;
       if (errorData?.unique_code) {
-        // Guest already registered
         setGuestResult(errorData.guest || { unique_code: errorData.unique_code, full_name: form.full_name });
         toast.info('You are already registered! Here is your code.');
       } else {
@@ -55,7 +70,6 @@ export default function RSVP() {
     <section className="min-h-screen py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] via-[#FFF9F2] to-[#FDFBF7]">
       <div className="max-w-xl mx-auto">
         
-        {/* Title Header */}
         <div className="text-center mb-10">
           <p className="text-xs sm:text-sm uppercase tracking-[0.3em] text-[#722F37] font-semibold mb-2">
             Attendance Confirmation
@@ -68,12 +82,19 @@ export default function RSVP() {
             <span className="text-[#D4AF37] text-lg">❦</span>
             <div className="h-[1px] w-12 bg-[#D4AF37]"></div>
           </div>
+
+          {slotsLeft !== null && (
+            <div className="inline-flex items-center gap-2 bg-[#722F37]/10 border border-[#722F37]/30 text-[#722F37] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
+              <FiUsers className="text-sm" />
+              <span>{slotsLeft} of 150 Seats Remaining</span>
+            </div>
+          )}
+
           <p className="text-sm text-gray-600">
-            Strictly by invitation • Maximum capacity: <strong>150 Guests</strong>
+            Strictly by invitation • Limited to <strong>150 Guests</strong>
           </p>
         </div>
 
-        {/* 1. Registration Form State */}
         {!guestResult ? (
           <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10 border border-[#D4AF37]/30">
             
@@ -85,8 +106,6 @@ export default function RSVP() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              
-              {/* Full Name */}
               <div>
                 <label className="block text-sm font-bold text-[#4A151D] mb-2">
                   Full Name <span className="text-red-500">*</span>
@@ -101,7 +120,6 @@ export default function RSVP() {
                 />
               </div>
 
-              {/* Phone Number */}
               <div>
                 <label className="block text-sm font-bold text-[#4A151D] mb-2">
                   Phone Number <span className="text-red-500">*</span>
@@ -116,7 +134,6 @@ export default function RSVP() {
                 />
               </div>
 
-              {/* Optional Email */}
               <div>
                 <label className="block text-sm font-bold text-[#4A151D] mb-2">
                   Email Address <span className="text-gray-400 font-normal">(Optional)</span>
@@ -130,26 +147,22 @@ export default function RSVP() {
                 />
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-[#722F37] to-[#4A151D] hover:from-[#5A252C] hover:to-[#3B1B0D] text-white py-4 rounded-xl font-bold tracking-widest uppercase shadow-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 text-sm sm:text-base flex items-center justify-center space-x-2"
+                disabled={loading || slotsLeft === 0}
+                className="w-full bg-gradient-to-r from-[#722F37] to-[#4A151D] hover:from-[#5A252C] hover:to-[#3B1B0D] text-white py-4 rounded-xl font-bold tracking-widest uppercase shadow-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 text-sm sm:text-base flex items-center justify-center space-x-2 cursor-pointer"
               >
-                <span>{loading ? 'Confirming...' : '💌 Confirm My Attendance'}</span>
+                <span>{loading ? 'Confirming...' : slotsLeft === 0 ? '⛔ Capacity Reached' : '💌 Confirm My Attendance'}</span>
               </button>
 
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400 pt-2">
                 <FiLock />
                 <span>Your information is private & secure</span>
               </div>
-
             </form>
           </div>
         ) : (
-          /* 2. Success & Unique Code Display State */
           <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-12 border-2 border-[#D4AF37] text-center animate-fade-in">
-            
             <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner">
               <FiCheckCircle />
             </div>
@@ -166,7 +179,6 @@ export default function RSVP() {
               You are officially registered for the wedding celebration. Here is your personal entrance access code:
             </p>
 
-            {/* Big Unique Entrance Code Card */}
             <div className="bg-gradient-to-br from-[#4A151D] via-[#722F37] to-[#5C2C16] text-[#F3E5AB] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#D4AF37]/50 max-w-sm mx-auto mb-6">
               <p className="text-xs uppercase tracking-widest text-white/70 mb-2 font-medium">
                 Unique Entrance Pass
@@ -179,16 +191,14 @@ export default function RSVP() {
               </p>
             </div>
 
-            {/* Copy Button */}
             <button
               onClick={handleCopyCode}
-              className="inline-flex items-center space-x-2 bg-[#F3E5AB] hover:bg-[#e6d695] text-[#4A151D] px-6 py-3 rounded-full text-xs uppercase tracking-widest font-bold shadow-md transition-all active:scale-95 mb-8"
+              className="inline-flex items-center space-x-2 bg-[#F3E5AB] hover:bg-[#e6d695] text-[#4A151D] px-6 py-3 rounded-full text-xs uppercase tracking-widest font-bold shadow-md transition-all active:scale-95 mb-8 cursor-pointer"
             >
               <FiCopy className="w-4 h-4" />
               <span>{copied ? 'Copied to Clipboard!' : 'Copy Entrance Code'}</span>
             </button>
 
-            {/* Instruction Warning Box */}
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 text-left space-y-2">
               <p className="font-bold flex items-center gap-1.5">
                 <span>📸</span> Please Take a Screenshot of this screen!
@@ -201,12 +211,11 @@ export default function RSVP() {
             <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row justify-center gap-4 text-xs">
               <button
                 onClick={() => setGuestResult(null)}
-                className="text-[#722F37] underline font-semibold hover:text-[#4A151D]"
+                className="text-[#722F37] underline font-semibold hover:text-[#4A151D] cursor-pointer"
               >
                 Register another family member
               </button>
             </div>
-
           </div>
         )}
 

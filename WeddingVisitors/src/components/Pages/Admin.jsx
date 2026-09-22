@@ -28,6 +28,9 @@ export default function Admin() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [activeTab, setActiveTab] = useState('guests'); // 'guests' or 'photos'
   
+  // Dynamic API Base URL for local & production
+  const API_URL = import.meta.env.VITE_API_URL || '';
+
   // Password Management States (For Master Admin only)
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [targetRoleToChange, setTargetRoleToChange] = useState('admin'); // 'admin' or 'usher'
@@ -59,7 +62,7 @@ export default function Admin() {
     setLoggingIn(true);
 
     try {
-      const response = await axios.post('/api/admin/login', { password });
+      const response = await axios.post(`${API_URL}/api/admin/login`, { password });
       setAuthenticated(true);
       setRole(response.data.role); // 'admin' or 'usher'
       fetchGuestData();
@@ -90,7 +93,7 @@ export default function Admin() {
 
     setChangingPass(true);
     try {
-      const response = await axios.post('/api/admin/change-password', {
+      const response = await axios.post(`${API_URL}/api/admin/change-password`, {
         currentAdminPassword: passForm.currentAdminPassword,
         targetRole: targetRoleToChange,
         newPassword: passForm.newPassword
@@ -108,7 +111,7 @@ export default function Admin() {
   const fetchGuestData = async (silent = false) => {
     try {
       if (!silent) setIsRefreshing(true);
-      const response = await axios.get('/api/guests/all');
+      const response = await axios.get(`${API_URL}/api/guests/all`);
       setGuests(response.data.guests);
       setStats({
         total: response.data.total,
@@ -124,7 +127,7 @@ export default function Admin() {
 
   const fetchPhotosData = async () => {
     try {
-      const response = await axios.get('/api/photos/all');
+      const response = await axios.get(`${API_URL}/api/photos/all`);
       setPhotos(response.data);
     } catch (err) {
       console.error(err);
@@ -147,7 +150,7 @@ export default function Admin() {
 
     setCheckingIn(true);
     try {
-      const response = await axios.post('/api/guests/checkin', {
+      const response = await axios.post(`${API_URL}/api/guests/checkin`, {
         unique_code: checkInCode.toUpperCase().trim()
       });
       toast.success(response.data.message);
@@ -166,7 +169,7 @@ export default function Admin() {
     setAddingGuest(true);
 
     try {
-      const response = await axios.post('/api/guests/register', newGuest);
+      const response = await axios.post(`${API_URL}/api/guests/register`, newGuest);
       toast.success(`Guest added! Code: ${response.data.guest.unique_code} 🎉`);
       setNewGuest({ full_name: '', phone: '', email: '' });
       setShowAddForm(false);
@@ -183,7 +186,7 @@ export default function Admin() {
     if (!window.confirm(`Delete "${name}" from the list?`)) return;
 
     try {
-      await axios.delete(`/api/guests/${id}`);
+      await axios.delete(`${API_URL}/api/guests/${id}`);
       toast.success('Guest removed.');
       fetchGuestData();
     } catch (err) {
@@ -205,7 +208,7 @@ export default function Admin() {
     formData.append('uploaded_by', adminUploaderName.trim() || 'Admin');
 
     try {
-      const response = await axios.post('/api/photos/upload', formData, {
+      const response = await axios.post(`${API_URL}/api/photos/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       toast.success(response.data.message || 'Photos uploaded! 📸');
@@ -225,7 +228,7 @@ export default function Admin() {
     if (!window.confirm(`Permanently delete photo by "${uploader}"?`)) return;
 
     try {
-      await axios.delete(`/api/photos/${id}`);
+      await axios.delete(`${API_URL}/api/photos/${id}`);
       toast.success('Photo deleted.');
       fetchPhotosData();
     } catch (err) {
@@ -234,7 +237,7 @@ export default function Admin() {
   };
 
   const handleExportExcel = () => {
-    window.open('/api/guests/export', '_blank');
+    window.open(`${API_URL}/api/guests/export`, '_blank');
   };
 
   const filteredGuests = guests.filter(g =>
@@ -296,7 +299,6 @@ export default function Admin() {
                 Wedding Control Center
               </h1>
               
-              {/* Role Indicator Badge */}
               {role === 'admin' ? (
                 <span className="inline-flex items-center gap-1 bg-[#722F37] text-[#F3E5AB] text-xs font-bold px-3 py-1 rounded-full shadow-sm">
                   <span>👑 Master Admin</span>
@@ -322,7 +324,6 @@ export default function Admin() {
               <FiRefreshCw className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
 
-            {/* 👑 PASSWORD MANAGEMENT (ONLY VISIBLE TO MASTER ADMIN) */}
             {role === 'admin' && (
               <button
                 onClick={() => setShowPasswordModal(true)}
@@ -334,7 +335,6 @@ export default function Admin() {
               </button>
             )}
 
-            {/* Logout */}
             <button
               onClick={handleLogout}
               className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all cursor-pointer"
@@ -345,7 +345,6 @@ export default function Admin() {
 
             {activeTab === 'guests' && (
               <>
-                {/* 👑 MANUALLY ADD GUEST (ADMIN ONLY) */}
                 {role === 'admin' && (
                   <button
                     onClick={() => setShowAddForm(!showAddForm)}
@@ -356,7 +355,6 @@ export default function Admin() {
                   </button>
                 )}
 
-                {/* 👑 EXCEL EXPORT (ADMIN ONLY) */}
                 {role === 'admin' && (
                   <button
                     onClick={handleExportExcel}
@@ -371,7 +369,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* 🔐 PASSWORD MANAGEMENT MODAL (ADMIN ONLY) */}
+        {/* 🔐 PASSWORD MANAGEMENT MODAL */}
         {showPasswordModal && role === 'admin' && (
           <div 
             onClick={() => setShowPasswordModal(false)}
@@ -398,7 +396,6 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Choose Which Password to Change */}
               <div className="flex bg-gray-100 p-1 rounded-xl mb-4 text-xs font-bold">
                 <button
                   type="button"
@@ -645,7 +642,7 @@ export default function Admin() {
               </div>
             )}
 
-            {/* GATE CHECK-IN & SEARCH FILTER (ACCESSIBLE TO BOTH USHERS & ADMIN) */}
+            {/* GATE CHECK-IN & SEARCH FILTER */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
               {/* GATE CHECK-IN */}
@@ -871,12 +868,11 @@ export default function Admin() {
                       className="group relative bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-200 aspect-square flex flex-col justify-between"
                     >
                       <img
-                        src={`/uploads/${photo.filename}`}
+                        src={`${API_URL}/uploads/${photo.filename}`}
                         alt={photo.original_name}
                         className="w-full h-full object-cover"
                       />
 
-                      {/* Delete button (ADMIN ONLY) */}
                       {role === 'admin' && (
                         <div className="absolute top-2 right-2 z-10">
                           <button
@@ -889,7 +885,6 @@ export default function Admin() {
                         </div>
                       )}
 
-                      {/* Bottom Caption */}
                       <div className="absolute inset-x-0 bottom-0 bg-black/75 p-2 text-white">
                         <p className="text-[11px] font-bold truncate">
                           {photo.uploaded_by}
