@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div>
       <Hero />
-      <CountdownTimer targetDate="2026-10-15T10:00:00" />
+      <CountdownTimer targetDate="2026-10-31T10:00:00" />
       <WeddingDetails />
     </div>
   );

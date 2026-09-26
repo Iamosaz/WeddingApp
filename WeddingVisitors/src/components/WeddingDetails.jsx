@@ -11,19 +11,18 @@ export default function WeddingDetails() {
     {
       icon: <FiCalendar className="w-8 h-8 text-[#D4AF37]" />,
       title: 'The Date',
-      line1: 'Saturday, 15th October 2026',
+      line1: 'Saturday, 31th October 2026',
       line2: 'Kindly be seated 15 mins before start',
     },
     {
       icon: <FiClock className="w-8 h-8 text-[#D4AF37]" />,
       title: 'The Time',
       line1: 'Solemnization: 10:00 AM prompt',
-      line2: 'Reception: 1:00 PM',
     },
     {
       icon: <FiMapPin className="w-8 h-8 text-[#D4AF37]" />,
       title: 'The Venue',
-      line1: 'The Family House of Mr and Mrs Eze',
+      line1: 'The Family House of Mr and Mrs Adeleke',
       line2: 'Ibeju-Lekki, Lagos, Nigeria',
     },
     {
@@ -103,7 +102,7 @@ export default function WeddingDetails() {
               Venue Location
             </span>
             <h3 className="text-2xl sm:text-3xl font-serif font-bold mb-4 text-[#FDFBF7]">
-              The Family House of Mr and Mrs Eze
+              The Family House of Mr and Mrs Adeleke
             </h3>
             <p className="text-white/80 text-sm leading-relaxed mb-6">
               Join us for a heartfelt and joyful celebration. Secure parking and security will be available on-site for all registered guests.

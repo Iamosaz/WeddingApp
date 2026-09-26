@@ -131,7 +131,7 @@ export default function Hero() {
           Saturday, 15th October 2026
         </p>
         <p className="text-xs sm:text-sm text-[#F3E5AB] tracking-wider uppercase mb-6 sm:mb-8 drop-shadow-md">
-          The Family House of Mr and Mrs Eze • Ibeju-Lekki, Lagos
+          The Family House of Mr and Mrs Adeleke • Ibeju-Lekki, Lagos
         </p>
 
         {/* Touch-Friendly Action Buttons */}
