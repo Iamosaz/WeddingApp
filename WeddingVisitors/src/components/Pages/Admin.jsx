@@ -464,7 +464,7 @@ export default function Admin() {
                   <button
                     type="submit"
                     disabled={changingPass}
-                    className="w-full bg-[#722F37] hover:bg-[#4A151D] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
+                    className="w-full bg-[#722F37] hover:bg-[#4A151D] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     {changingPass ? 'Updating...' : `Save New ${targetRoleToChange.toUpperCase()} Password`}
                   </button>
@@ -726,7 +726,7 @@ export default function Admin() {
                   <tbody className="divide-y divide-gray-100 text-gray-700">
                     {filteredGuests.map((g, index) => (
                       <tr
-                        key={g.id}
+                        key={g._id || g.id}
                         className={`hover:bg-gray-50/80 transition-colors ${
                           g.checked_in ? 'bg-emerald-50/30' : ''
                         }`}
@@ -755,7 +755,7 @@ export default function Admin() {
                         {role === 'admin' && (
                           <td className="px-6 py-4 text-center">
                             <button
-                              onClick={() => handleDeleteGuest(g.id, g.full_name)}
+                              onClick={() => handleDeleteGuest(g._id || g.id, g.full_name)}
                               className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition-colors cursor-pointer"
                               title="Remove guest"
                             >
@@ -864,19 +864,19 @@ export default function Admin() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {photos.map(photo => (
                     <div
-                      key={photo.id}
+                      key={photo._id || photo.id}
                       className="group relative bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-200 aspect-square flex flex-col justify-between"
                     >
                       <img
-                        src={`${API_URL}/uploads/${photo.filename}`}
-                        alt={photo.original_name}
+                        src={photo.url || (photo.filename ? `${API_URL}/uploads/${photo.filename}` : '')}
+                        alt={photo.original_name || 'Wedding Moment'}
                         className="w-full h-full object-cover"
                       />
 
                       {role === 'admin' && (
                         <div className="absolute top-2 right-2 z-10">
                           <button
-                            onClick={() => handleDeletePhoto(photo.id, photo.uploaded_by)}
+                            onClick={() => handleDeletePhoto(photo._id || photo.id, photo.uploaded_by)}
                             className="w-8 h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg transition-transform transform active:scale-95 cursor-pointer"
                             title="Delete photo permanently"
                           >

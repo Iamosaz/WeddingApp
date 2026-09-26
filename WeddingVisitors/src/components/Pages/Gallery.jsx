@@ -226,13 +226,13 @@ export default function Gallery() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {photos.map((photo) => (
               <div
-                key={photo.id}
+                key={photo._id || photo.id}
                 onClick={() => setActivePhoto(photo)}
                 className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 aspect-square cursor-pointer border border-[#D4AF37]/20"
               >
                 <img
-                  src={`${API_URL}/uploads/${photo.filename}`}
-                  alt={photo.original_name}
+                  src={photo.url || (photo.filename ? `${API_URL}/uploads/${photo.filename}` : '')}
+                  alt={photo.original_name || 'Wedding Photo'}
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
@@ -275,7 +275,7 @@ export default function Gallery() {
               className="max-w-4xl max-h-[90vh] flex flex-col items-center"
             >
               <img
-                src={`${API_URL}/uploads/${activePhoto.filename}`}
+                src={activePhoto.url || (activePhoto.filename ? `${API_URL}/uploads/${activePhoto.filename}` : '')}
                 alt="Enlarged wedding moment"
                 className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10"
               />
