@@ -118,7 +118,7 @@ export default function Hero() {
         <h1 className="text-4xl sm:text-6xl md:text-7xl font-serif font-bold text-white tracking-wide leading-tight drop-shadow-lg">
           Precious <span className="text-[#D4AF37] font-normal">&</span> Bright
         </h1>
-
+        <h3>Invites you to their engagement Ceremony</h3>
         {/* Ornamental Divider */}
         <div className="flex items-center justify-center space-x-4 my-3 sm:my-4 w-full">
           <div className="h-[1px] w-16 sm:w-28 bg-[#D4AF37]/80"></div>
@@ -128,10 +128,10 @@ export default function Hero() {
 
         {/* Date & Location */}
         <p className="text-base sm:text-xl md:text-2xl text-white font-medium tracking-wide mb-1 drop-shadow-md">
-          Saturday, 15th October 2026
+          Saturday, 31th October 2026
         </p>
         <p className="text-xs sm:text-sm text-[#F3E5AB] tracking-wider uppercase mb-6 sm:mb-8 drop-shadow-md">
-          The Family House of Mr and Mrs Adeleke • Ibeju-Lekki, Lagos
+          The Family House of Mr and Mrs Adeleke • Molete Town , Ibeju Lekki, Lagos
         </p>
 
         {/* Touch-Friendly Action Buttons */}

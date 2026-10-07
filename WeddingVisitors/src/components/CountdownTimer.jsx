@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function CountdownTimer({ targetDate = '2025-03-15T10:00:00' }) {
+export default function CountdownTimer({ targetDate = '2026-10-31T10:00:00' }) {
   const calculateTimeLeft = () => {
     const difference = +new Date(targetDate) - +new Date();
     let timeLeft = {};
