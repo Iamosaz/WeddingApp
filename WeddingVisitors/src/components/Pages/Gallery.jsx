@@ -8,8 +8,11 @@ import {
   FiX, 
   FiMaximize2, 
   FiRefreshCw, 
-  FiHeart 
+  FiHeart,
+  FiPrinter,
+  FiDownload
 } from 'react-icons/fi';
+import { HiOutlineQrcode } from 'react-icons/hi';
 
 export default function Gallery() {
   const [photos, setPhotos] = useState([]);
@@ -18,9 +21,18 @@ export default function Gallery() {
   const [uploaderName, setUploaderName] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [activePhoto, setActivePhoto] = useState(null); // Lightbox modal state
+  const [showQrModal, setShowQrModal] = useState(false); // QR code table card modal state
 
   // Backend URL helper (works locally and on live production)
   const API_URL = import.meta.env.VITE_API_URL || '';
+
+  // Get dynamic live gallery URL for the QR code
+  const galleryUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/gallery` 
+    : 'https://preciousandbright.com/gallery';
+
+  // High-res QR code generated with your wedding wine color
+  const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(galleryUrl)}&color=4A151D&bgcolor=FFFFFF&margin=10`;
 
   // Fetch all photos from the database
   const fetchPhotos = async () => {
@@ -84,12 +96,17 @@ export default function Gallery() {
     }
   };
 
+  // Handle printing the QR table card
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <section className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] via-[#FFF9F2] to-[#FDFBF7]">
       <div className="max-w-6xl mx-auto">
         
         {/* Title Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
+        <div className="text-center max-w-2xl mx-auto mb-10">
           <span className="text-xs uppercase tracking-[0.3em] text-[#722F37] font-semibold">
             Captured Moments
           </span>
@@ -101,9 +118,18 @@ export default function Gallery() {
             <span className="text-[#D4AF37] text-lg">❦</span>
             <div className="h-[1px] w-12 bg-[#D4AF37]"></div>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 mb-6">
             Snap, upload, and share your favorite moments with Precious & Bright. Every guest can view your photos live!
           </p>
+
+          {/* 📱 Button to Open Table QR Code Modal */}
+          <button
+            onClick={() => setShowQrModal(true)}
+            className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#c49f2e] text-[#4A151D] px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider shadow-md transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <HiOutlineQrcode className="w-5 h-5 text-[#4A151D]" />
+            <span>Generate & Print Table QR Code</span>
+          </button>
         </div>
 
         {/* 📸 GUEST UPLOAD SECTION CARD */}
@@ -286,6 +312,78 @@ export default function Gallery() {
                 <p className="text-xs text-white/50">
                   {new Date(activePhoto.uploaded_at).toLocaleString()}
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 📱 PRINTABLE TABLE QR CODE MODAL */}
+        {showQrModal && (
+          <div
+            onClick={() => setShowQrModal(false)}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#FDFBF7] rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-[#D4AF37] text-center relative animate-fade-in"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:text-[#4A151D] hover:bg-gray-100 transition-colors"
+              >
+                <FiX className="text-xl" />
+              </button>
+
+              {/* Table Card Design Header */}
+              <p className="text-[10px] uppercase tracking-[0.3em] text-[#722F37] font-semibold mb-1">
+                Precious &amp; Bright
+              </p>
+              <h3 className="text-2xl font-serif font-bold text-[#4A151D] mb-2">
+                Share Your Photos
+              </h3>
+              
+              <div className="flex items-center justify-center space-x-2 my-2">
+                <div className="h-[1px] w-8 bg-[#D4AF37]"></div>
+                <span className="text-[#D4AF37] text-sm">❦</span>
+                <div className="h-[1px] w-8 bg-[#D4AF37]"></div>
+              </div>
+
+              <p className="text-xs text-gray-600 mb-5">
+                Scan with your phone camera to capture and upload your memories to our live gallery!
+              </p>
+
+              {/* QR Code Container */}
+              <div className="bg-white p-4 rounded-2xl shadow-inner border border-[#D4AF37]/30 inline-block mb-4">
+                <img
+                  src={qrCodeImageUrl}
+                  alt="Wedding Gallery QR Code"
+                  className="w-52 h-52 mx-auto rounded-lg object-contain"
+                />
+              </div>
+
+              <p className="text-[11px] text-gray-500 font-mono mb-5 truncate px-2">
+                {galleryUrl}
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrint}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#4A151D] hover:bg-[#3B1B0D] text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow transition-all"
+                >
+                  <FiPrinter className="w-4 h-4" />
+                  <span>Print Card</span>
+                </button>
+                <a
+                  href={qrCodeImageUrl}
+                  download="Wedding-Gallery-QRCode.png"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 bg-[#D4AF37] hover:bg-[#c49f2e] text-[#4A151D] px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow transition-all"
+                >
+                  <FiDownload className="w-4 h-4" />
+                </a>
               </div>
             </div>
           </div>
