@@ -25,7 +25,7 @@ export default function WeddingDetails() {
     {
       icon: <FiMapPin className="w-8 h-8 text-[#D4AF37]" />,
       title: 'The Venue',
-      line1: 'The Family House of Mr and Mrs Adeleke',
+      line1: 'The Family Compound of Mr and Mrs Adeleke',
       line2: 'Molete Town, Ibeju Lekki, Lagos, Nigeria',
       image: '/PnB3.png',
     },

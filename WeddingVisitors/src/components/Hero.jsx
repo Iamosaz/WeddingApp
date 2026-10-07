@@ -131,7 +131,7 @@ export default function Hero() {
           Saturday, 31th October 2026
         </p>
         <p className="text-xs sm:text-sm text-[#F3E5AB] tracking-wider uppercase mb-6 sm:mb-8 drop-shadow-md">
-          The Family House of Mr and Mrs Adeleke • Molete Town , Ibeju Lekki, Lagos
+          The Family Compound of Mr and Mrs Adeleke • Molete Town , Ibeju Lekki, Lagos
         </p>
 
         {/* Touch-Friendly Action Buttons */}
@@ -151,7 +151,7 @@ export default function Hero() {
         </div>
 
         <p className="mt-5 text-[11px] sm:text-xs text-white/80 tracking-widest uppercase font-medium">
-          Strictly by invitation • Maximum 150 guests
+          {/* Strictly by invitation • Maximum 150 guests */}
         </p>
       </div>
 
