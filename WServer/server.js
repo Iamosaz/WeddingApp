@@ -36,8 +36,14 @@ function uploadToCloudinary(buffer) {
   });
 }
 
-// Middlewares
-app.use(cors());
+// ✅ BULLETPROOF CORS SETTINGS (Resolves "cannot get API" blocked by browsers)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -303,7 +309,6 @@ app.post('/api/photos/upload', upload.array('photos', 10), async (req, res) => {
 
   try {
     const uploadPromises = req.files.map(async (file) => {
-      // Stream buffer directly to Cloudinary
       const result = await uploadToCloudinary(file.buffer);
       return Photo.create({
         url: result.secure_url,
@@ -333,6 +338,58 @@ app.get('/api/photos/all', async (req, res) => {
     res.json(photos);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve photos' });
+  }
+});
+
+// AUTO-SYNC CLOUDINARY → MONGODB
+app.get('/api/photos/sync', async (req, res) => {
+  try {
+    let allResources = [];
+    let nextCursor = null;
+
+    do {
+      const result = await cloudinary.api.resources({
+        type: 'upload',
+        prefix: 'wedding_gallery/',
+        max_results: 500,
+        next_cursor: nextCursor,
+      });
+      allResources = allResources.concat(result.resources);
+      nextCursor = result.next_cursor;
+    } while (nextCursor);
+
+    let restored = 0;
+    let skipped = 0;
+
+    for (const file of allResources) {
+      const exists = await Photo.findOne({ 
+        $or: [{ url: file.secure_url }, { public_id: file.public_id }] 
+      });
+      
+      if (!exists) {
+        await Photo.create({
+          url: file.secure_url,
+          public_id: file.public_id,
+          original_name: file.public_id.split('/').pop(),
+          uploaded_by: 'Wedding Guest',
+          uploaded_at: new Date(file.created_at),
+        });
+        restored++;
+      } else {
+        skipped++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Sync complete! ${restored} photo(s) restored from Cloudinary.`,
+      restored,
+      skipped,
+      total_in_cloudinary: allResources.length,
+    });
+  } catch (err) {
+    console.error('Sync Error:', err);
+    res.status(500).json({ error: 'Failed to sync photos from Cloudinary: ' + err.message });
   }
 });
 
