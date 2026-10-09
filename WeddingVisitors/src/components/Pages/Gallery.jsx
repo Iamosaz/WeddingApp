@@ -25,48 +25,53 @@ export default function Gallery() {
   const [activePhoto, setActivePhoto] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
 
-  // Backend URL
-  const API_URL = import.meta.env.VITE_API_URL || '';
+  // ✅ SANITIZE API URL: Automatically prevents double-slash errors (e.g., "onrender.com//api")
+  const rawApiUrl = import.meta.env.VITE_API_URL || '';
+  const API_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
 
-  // ✅ FIX: Use production URL for QR code (NOT localhost)
-  // Priority: VITE_SITE_URL env variable > window.location.origin > fallback
+  // ✅ GET LIVE SITE URL (Priority: Environment Key > Browser URL > Fallback)
   const SITE_URL = import.meta.env.VITE_SITE_URL || 
     (typeof window !== 'undefined' && !window.location.origin.includes('localhost') 
       ? window.location.origin 
       : 'https://preciousandbright.com');
   const galleryUrl = `${SITE_URL}/gallery`;
 
-  // High-res QR code with wedding wine color
+  // Dynamic QR Code pointing to live site URL
   const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(galleryUrl)}&color=4A151D&bgcolor=FFFFFF&margin=10`;
 
-  // Fetch all photos from database (with Cloudinary auto-recovery)
+  // Fetch all photos from the database
   const fetchPhotos = async (silent = false) => {
     try {
       if (!silent) setLoadingPhotos(true);
+      
+      console.log(`📡 Requesting API: ${API_URL}/api/photos/all`);
       const { data } = await axios.get(`${API_URL}/api/photos/all`);
       setPhotos(data);
 
-      // ✅ AUTO-RECOVERY: If MongoDB is empty, auto-restore from Cloudinary
+      // AUTO-RECOVERY: Sync immediately from Cloudinary if database is clean & empty
       if (data.length === 0 && !silent) {
         try {
           const syncResponse = await axios.get(`${API_URL}/api/photos/sync`);
           if (syncResponse.data.restored > 0) {
             const { data: restoredData } = await axios.get(`${API_URL}/api/photos/all`);
             setPhotos(restoredData);
-            toast.success(`✨ ${syncResponse.data.restored} photos restored from Cloudinary!`);
+            toast.success(`✨ ${syncResponse.data.restored} moments restored from Cloudinary!`);
           }
         } catch (syncErr) {
-          console.log('Auto-sync skipped:', syncErr.message);
+          console.log('Auto-recovery deferred:', syncErr.message);
         }
       }
     } catch (err) {
-      if (!silent) toast.error('Failed to load gallery photos');
+      console.error('❌ API Request Failed:', err);
+      if (!silent) {
+        toast.error('Could not connect to database. Please refresh.');
+      }
     } finally {
       if (!silent) setLoadingPhotos(false);
     }
   };
 
-  // ✅ Manual Cloudinary Sync (safety net button for owner)
+  // Manual Cloudinary Sync
   const handleCloudinarySync = async () => {
     try {
       setSyncing(true);
@@ -74,7 +79,7 @@ export default function Gallery() {
       toast.success(data.message || `${data.restored} photos restored!`);
       await fetchPhotos(true);
     } catch (err) {
-      toast.error('Sync failed. Please try again.');
+      toast.error('Restore failed. Check backend server connection.');
     } finally {
       setSyncing(false);
     }
@@ -152,7 +157,7 @@ export default function Gallery() {
             Snap, upload, and share your favorite moments with Precious & Bright. Every guest can view your photos live!
           </p>
 
-          {/* QR Code Button */}
+          {/* Table QR Code Button */}
           <button
             onClick={() => setShowQrModal(true)}
             className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#c49f2e] text-[#4A151D] px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider shadow-md transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
@@ -162,7 +167,7 @@ export default function Gallery() {
           </button>
         </div>
 
-        {/* 📸 GUEST UPLOAD SECTION CARD */}
+        {/* Guest Upload Section */}
         <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 mb-12 border border-[#D4AF37]/30 max-w-xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-[#722F37]/10 text-[#722F37] rounded-full flex items-center justify-center text-xl">
@@ -179,8 +184,6 @@ export default function Gallery() {
           </div>
 
           <form onSubmit={handleUploadSubmit} className="space-y-4">
-            
-            {/* Uploader Name */}
             <div>
               <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
                 Your Name <span className="text-gray-400 font-normal">(Optional)</span>
@@ -197,7 +200,6 @@ export default function Gallery() {
               </div>
             </div>
 
-            {/* File Selector Box */}
             <div>
               <label
                 htmlFor="photo-input"
@@ -223,7 +225,6 @@ export default function Gallery() {
               </label>
             </div>
 
-            {/* Selected files indicator */}
             {selectedFiles.length > 0 && (
               <div className="flex items-center justify-between text-xs bg-amber-50 text-amber-900 px-4 py-2 rounded-xl border border-amber-200">
                 <span>{selectedFiles.length} file(s) ready to upload</span>
@@ -237,7 +238,6 @@ export default function Gallery() {
               </div>
             )}
 
-            {/* Submit Upload Button */}
             <button
               type="submit"
               disabled={uploading || selectedFiles.length === 0}
@@ -248,16 +248,13 @@ export default function Gallery() {
           </form>
         </div>
 
-        {/* 🖼️ GALLERY GRID HEADER */}
+        {/* Gallery Grid Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-serif font-bold text-[#4A151D]">
-              All Moments ({photos.length})
-            </h2>
-          </div>
+          <h2 className="text-xl font-serif font-bold text-[#4A151D]">
+            All Moments ({photos.length})
+          </h2>
 
           <div className="flex items-center gap-2">
-            {/* ✅ Cloudinary Sync Safety Button */}
             <button
               onClick={handleCloudinarySync}
               disabled={syncing}
@@ -278,7 +275,7 @@ export default function Gallery() {
           </div>
         </div>
 
-        {/* 📸 GALLERY GRID */}
+        {/* Gallery Grid */}
         {photos.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm border border-gray-100">
             <div className="w-16 h-16 bg-[#722F37]/5 text-[#722F37] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
@@ -309,7 +306,6 @@ export default function Gallery() {
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
 
-                {/* Overlay details */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#4A151D]/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 text-white">
                   <p className="text-xs font-bold truncate flex items-center gap-1">
                     <FiHeart className="text-[#D4AF37]" />
@@ -320,7 +316,6 @@ export default function Gallery() {
                   </p>
                 </div>
 
-                {/* Lightbox Expand Icon */}
                 <div className="absolute top-2 right-2 w-7 h-7 bg-black/40 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
                   <FiMaximize2 />
                 </div>
@@ -329,7 +324,7 @@ export default function Gallery() {
           </div>
         )}
 
-        {/* 🔍 FULL-SCREEN LIGHTBOX MODAL */}
+        {/* Full-Screen Lightbox Modal */}
         {activePhoto && (
           <div
             onClick={() => setActivePhoto(null)}
@@ -363,7 +358,7 @@ export default function Gallery() {
           </div>
         )}
 
-        {/* 📱 PRINTABLE TABLE QR CODE MODAL */}
+        {/* Printable QR Code Modal */}
         {showQrModal && (
           <div
             onClick={() => setShowQrModal(false)}
@@ -373,7 +368,6 @@ export default function Gallery() {
               onClick={(e) => e.stopPropagation()}
               className="bg-[#FDFBF7] rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-[#D4AF37] text-center relative animate-fade-in"
             >
-              {/* Close Button */}
               <button
                 onClick={() => setShowQrModal(false)}
                 className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:text-[#4A151D] hover:bg-gray-100 transition-colors"
@@ -381,7 +375,6 @@ export default function Gallery() {
                 <FiX className="text-xl" />
               </button>
 
-              {/* Table Card Design Header */}
               <p className="text-[10px] uppercase tracking-[0.3em] text-[#722F37] font-semibold mb-1">
                 Precious &amp; Bright
               </p>
@@ -399,7 +392,6 @@ export default function Gallery() {
                 Scan with your phone camera to capture and upload your memories to our live gallery!
               </p>
 
-              {/* QR Code Container */}
               <div className="bg-white p-4 rounded-2xl shadow-inner border border-[#D4AF37]/30 inline-block mb-4">
                 <img
                   src={qrCodeImageUrl}
@@ -408,19 +400,17 @@ export default function Gallery() {
                 />
               </div>
 
-              {/* ✅ Shows exact URL so you can verify it's production, NOT localhost */}
               <p className="text-[11px] text-gray-500 font-mono mb-5 truncate px-2">
                 {galleryUrl}
               </p>
 
-              {/* Warning if localhost */}
+              {/* Warning helper if hosted locally */}
               {galleryUrl.includes('localhost') && (
                 <p className="text-[10px] text-red-500 font-bold bg-red-50 p-2 rounded-lg mb-3 border border-red-200">
                   ⚠️ Set VITE_SITE_URL in .env to use your production URL!
                 </p>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-2">
                 <button
                   onClick={handlePrint}
