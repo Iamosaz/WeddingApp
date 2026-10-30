@@ -1,7 +1,7 @@
-const { connectDB, Guest } = require('../_lib/database');
-const ExcelJS = require('exceljs');
+import { connectDB, Guest } from '../_lib/database.js';
+import ExcelJS from 'exceljs';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
   await connectDB();
@@ -50,4 +50,4 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: 'Failed to generate Excel file' });
   }
-};
+}

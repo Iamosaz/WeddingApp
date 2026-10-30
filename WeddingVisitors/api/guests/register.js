@@ -1,4 +1,4 @@
-const { connectDB, Guest } = require('../_lib/database');
+import { connectDB, Guest } from '../_lib/database.js';
 
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -9,7 +9,7 @@ function generateCode() {
   return code;
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   await connectDB();
@@ -56,4 +56,4 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
-};
+}

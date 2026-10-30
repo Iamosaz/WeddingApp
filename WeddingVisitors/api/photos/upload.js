@@ -1,5 +1,5 @@
-const { connectDB, Photo } = require('../_lib/database');
-const cloudinary = require('cloudinary').v2;
+import { connectDB, Photo } from '../_lib/database.js';
+import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
@@ -7,7 +7,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || '',
 });
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   await connectDB();
@@ -40,4 +40,4 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: 'Failed to upload photo to cloud storage' });
   }
-};
+}

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 let cached = global.mongoose;
 if (!cached) {
@@ -20,7 +20,6 @@ async function connectDB() {
   }
   cached.conn = await cached.promise;
 
-  // Initialize default passwords if database is fresh
   const Settings = mongoose.models.Settings;
   if (Settings) {
     const existing = await Settings.findOne();
@@ -32,7 +31,6 @@ async function connectDB() {
   return cached.conn;
 }
 
-// Guest Model (matches your exact schema)
 const guestSchema = new mongoose.Schema({
   full_name: { type: String, required: true },
   phone: { type: String, required: true, unique: true },
@@ -44,7 +42,6 @@ const guestSchema = new mongoose.Schema({
 });
 const Guest = mongoose.models.Guest || mongoose.model('Guest', guestSchema);
 
-// Photo Model (matches your exact schema)
 const photoSchema = new mongoose.Schema({
   url: { type: String, required: true },
   public_id: { type: String, default: null },
@@ -54,11 +51,10 @@ const photoSchema = new mongoose.Schema({
 });
 const Photo = mongoose.models.Photo || mongoose.model('Photo', photoSchema);
 
-// Settings Model (matches your exact schema)
 const adminSchema = new mongoose.Schema({
   admin_password: { type: String, default: 'admin2026' },
   usher_password: { type: String, default: 'usher2026' },
 });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', adminSchema);
 
-module.exports = { connectDB, Guest, Photo, Settings };
+export { connectDB, Guest, Photo, Settings };
