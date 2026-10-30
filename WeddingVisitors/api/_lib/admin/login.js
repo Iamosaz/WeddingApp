@@ -1,4 +1,4 @@
-const { connectDB, Settings } = require('../_lib/database');
+const { connectDB, Settings } = require('../database');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
