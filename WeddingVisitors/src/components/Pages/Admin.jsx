@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { 
-  FiDownload, 
-  FiTrash2, 
-  FiCheckCircle, 
-  FiUsers, 
-  FiSearch, 
-  FiLock, 
-  FiPlus, 
-  FiX, 
+
+import {
+  FiDownload,
+  FiTrash2,
+  FiCheckCircle,
+  FiUsers,
+  FiSearch,
+  FiLock,
+  FiPlus,
+  FiX,
   FiRefreshCw,
   FiUserCheck,
   FiUserX,
@@ -18,7 +19,7 @@ import {
   FiImage,
   FiKey,
   FiLogOut,
-  FiShield
+  FiShield,
 } from 'react-icons/fi';
 
 export default function Admin() {
@@ -27,54 +28,188 @@ export default function Admin() {
   const [password, setPassword] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
   const [activeTab, setActiveTab] = useState('guests');
-  
+
   const API_URL = '';
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [targetRoleToChange, setTargetRoleToChange] = useState('admin');
-  const [passForm, setPassForm] = useState({ currentAdminPassword: '', newPassword: '', confirmPassword: '' });
+
+  const [passForm, setPassForm] = useState({
+    currentAdminPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
   const [changingPass, setChangingPass] = useState(false);
 
   const [guests, setGuests] = useState([]);
-  const [stats, setStats] = useState({ total: 0, checkedIn: 0, maxLimit: 150 });
+
+  const [stats, setStats] = useState({
+    total: 0,
+    checkedIn: 0,
+    maxLimit: 150,
+  });
+
   const [checkInCode, setCheckInCode] = useState('');
   const [search, setSearch] = useState('');
   const [checkingIn, setCheckingIn] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newGuest, setNewGuest] = useState({ full_name: '', phone: '', email: '' });
+
+  const [newGuest, setNewGuest] = useState({
+    full_name: '',
+    phone: '',
+    email: '',
+  });
+
   const [addingGuest, setAddingGuest] = useState(false);
 
   const [photos, setPhotos] = useState([]);
   const [adminPhotos, setAdminPhotos] = useState([]);
-  const [adminUploaderName, setAdminUploaderName] = useState('Admin (Official)');
+  const [adminUploaderName, setAdminUploaderName] = useState(
+    'Admin (Official)'
+  );
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+
+  // --------------------------------------------------
+  // GUEST DATA
+  // --------------------------------------------------
+
+  const fetchGuestData = async (silent = false) => {
+    try {
+      if (!silent) {
+        setIsRefreshing(true);
+      }
+
+      const response = await axios.get(`${API_URL}/api/guests/all`);
+
+      const responseData = response?.data;
+
+      // Accept either:
+      // 1. { guests: [...], total, checkedIn, maxLimit }
+      // 2. A plain array of guests
+      const guestList = Array.isArray(responseData)
+        ? responseData
+        : Array.isArray(responseData?.guests)
+          ? responseData.guests
+          : [];
+
+      setGuests(guestList);
+
+      // Use API statistics when available.
+      // Otherwise calculate safe values from the guest list.
+      const total = Number.isFinite(Number(responseData?.total))
+        ? Number(responseData.total)
+        : guestList.length;
+
+      const checkedIn = Number.isFinite(Number(responseData?.checkedIn))
+        ? Number(responseData.checkedIn)
+        : guestList.filter((guest) => guest?.checked_in).length;
+
+      const maxLimit = Number.isFinite(Number(responseData?.maxLimit))
+        ? Number(responseData.maxLimit)
+        : 150;
+
+      setStats({
+        total: Math.max(0, total),
+        checkedIn: Math.max(0, checkedIn),
+        maxLimit: Math.max(0, maxLimit),
+      });
+    } catch (err) {
+      console.error('Guest data error:', err);
+
+      if (!silent) {
+        toast.error('Failed to fetch guest list');
+      }
+
+      // Keep the page safe even if the API request fails.
+      setGuests([]);
+      setStats({
+        total: 0,
+        checkedIn: 0,
+        maxLimit: 150,
+      });
+    } finally {
+      if (!silent) {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
+  // --------------------------------------------------
+  // PHOTO DATA
+  // --------------------------------------------------
+
+  const fetchPhotosData = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/photos/all`);
+
+      const responseData = response?.data;
+
+      // Accept either:
+      // 1. A plain array of photos
+      // 2. { photos: [...] }
+      const photoList = Array.isArray(responseData)
+        ? responseData
+        : Array.isArray(responseData?.photos)
+          ? responseData.photos
+          : [];
+
+      setPhotos(photoList);
+    } catch (err) {
+      console.error('Photo data error:', err);
+
+      // Prevent the photo section from breaking the page.
+      setPhotos([]);
+    }
+  };
+
+  // --------------------------------------------------
+  // LOGIN
+  // --------------------------------------------------
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
     setLoggingIn(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/admin/login`, { password });
+      const response = await axios.post(`${API_URL}/api/admin/login`, {
+        password,
+      });
+
       setAuthenticated(true);
       setRole(response.data.role);
+
       fetchGuestData();
       fetchPhotosData();
+
       toast.success(response.data.message);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Incorrect password!');
+      toast.error(
+        err.response?.data?.error || 'Incorrect password!'
+      );
     } finally {
       setLoggingIn(false);
     }
   };
 
+  // --------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------
+
   const handleLogout = () => {
     setAuthenticated(false);
     setRole('usher');
     setPassword('');
+
     toast.info('Logged out.');
   };
+
+  // --------------------------------------------------
+  // CHANGE PASSWORD
+  // --------------------------------------------------
 
   const handleChangePasswordSubmit = async (e) => {
     e.preventDefault();
@@ -85,107 +220,160 @@ export default function Admin() {
     }
 
     setChangingPass(true);
+
     try {
-      const response = await axios.post(`${API_URL}/api/admin/change-password`, {
-        currentAdminPassword: passForm.currentAdminPassword,
-        targetRole: targetRoleToChange,
-        newPassword: passForm.newPassword
-      });
+      const response = await axios.post(
+        `${API_URL}/api/admin/change-password`,
+        {
+          currentAdminPassword: passForm.currentAdminPassword,
+          targetRole: targetRoleToChange,
+          newPassword: passForm.newPassword,
+        }
+      );
+
       toast.success(response.data.message);
-      setPassForm({ currentAdminPassword: '', newPassword: '', confirmPassword: '' });
+
+      setPassForm({
+        currentAdminPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
       setShowPasswordModal(false);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to change password');
+      toast.error(
+        err.response?.data?.error || 'Failed to change password'
+      );
     } finally {
       setChangingPass(false);
     }
   };
 
-  const fetchGuestData = async (silent = false) => {
-    try {
-      if (!silent) setIsRefreshing(true);
-      const response = await axios.get(`${API_URL}/api/guests/all`);
-      setGuests(response.data.guests);
-      setStats({
-        total: response.data.total,
-        checkedIn: response.data.checkedIn,
-        maxLimit: response.data.maxLimit,
-      });
-    } catch (err) {
-      if (!silent) toast.error('Failed to fetch guest list');
-    } finally {
-      if (!silent) setIsRefreshing(false);
-    }
-  };
-
-  const fetchPhotosData = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/photos/all`);
-      setPhotos(response.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // --------------------------------------------------
+  // AUTO REFRESH
+  // --------------------------------------------------
 
   useEffect(() => {
     if (!authenticated) return;
+
     const interval = setInterval(() => {
       fetchGuestData(true);
       fetchPhotosData();
     }, 5000);
+
     return () => clearInterval(interval);
   }, [authenticated]);
 
+  // --------------------------------------------------
+  // CHECK-IN GUEST
+  // --------------------------------------------------
+
   const handleCheckIn = async (e) => {
     e.preventDefault();
-    if (!checkInCode) return;
+
+    if (!checkInCode.trim()) return;
 
     setCheckingIn(true);
+
     try {
-      const response = await axios.post(`${API_URL}/api/guests/checkin`, {
-        unique_code: checkInCode.toUpperCase().trim()
-      });
+      const response = await axios.post(
+        `${API_URL}/api/guests/checkin`,
+        {
+          unique_code: checkInCode.toUpperCase().trim(),
+        }
+      );
+
       toast.success(response.data.message);
+
       setCheckInCode('');
       fetchGuestData();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Check-in failed');
+      toast.error(
+        err.response?.data?.error || 'Check-in failed'
+      );
     } finally {
       setCheckingIn(false);
     }
   };
 
+  // --------------------------------------------------
+  // ADD GUEST
+  // --------------------------------------------------
+
   const handleAddGuestSubmit = async (e) => {
     e.preventDefault();
+
     setAddingGuest(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/guests/register`, newGuest);
-      toast.success(`Guest added! Code: ${response.data.guest.unique_code} 🎉`);
-      setNewGuest({ full_name: '', phone: '', email: '' });
+      const response = await axios.post(
+        `${API_URL}/api/guests/register`,
+        newGuest
+      );
+
+      const generatedCode =
+        response.data?.guest?.unique_code || '';
+
+      toast.success(
+        generatedCode
+          ? `Guest added! Code: ${generatedCode} 🎉`
+          : 'Guest added successfully!'
+      );
+
+      setNewGuest({
+        full_name: '',
+        phone: '',
+        email: '',
+      });
+
       setShowAddForm(false);
+
       fetchGuestData();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to add guest');
+      toast.error(
+        err.response?.data?.error || 'Failed to add guest'
+      );
     } finally {
       setAddingGuest(false);
     }
   };
 
+  // --------------------------------------------------
+  // DELETE GUEST
+  // --------------------------------------------------
+
   const handleDeleteGuest = async (id, name) => {
-    if (!window.confirm(`Delete "${name}" from the list?`)) return;
+    if (!id) {
+      toast.error('Guest ID is missing.');
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Delete "${name || 'this guest'}" from the list?`
+      )
+    ) {
+      return;
+    }
 
     try {
       await axios.delete(`${API_URL}/api/guests/${id}`);
+
       toast.success('Guest removed.');
+
       fetchGuestData();
     } catch (err) {
       toast.error('Failed to delete guest');
     }
   };
 
+  // --------------------------------------------------
+  // UPLOAD PHOTOS
+  // --------------------------------------------------
+
   const handleAdminPhotoUpload = async (e) => {
     e.preventDefault();
+
     if (adminPhotos.length === 0) {
       toast.warn('Please select photos.');
       return;
@@ -195,57 +383,170 @@ export default function Admin() {
 
     try {
       const photosData = await Promise.all(
-        adminPhotos.map(file => {
+        adminPhotos.map((file) => {
           return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve({ data: reader.result, name: file.name });
+
+            reader.onloadend = () => {
+              resolve({
+                data: reader.result,
+                name: file.name,
+              });
+            };
+
             reader.onerror = reject;
+
             reader.readAsDataURL(file);
           });
         })
       );
 
-      const response = await axios.post(`${API_URL}/api/photos/upload`, {
-        photos: photosData,
-        uploaded_by: adminUploaderName.trim() || 'Admin',
-      });
+      const response = await axios.post(
+        `${API_URL}/api/photos/upload`,
+        {
+          photos: photosData,
+          uploaded_by: adminUploaderName.trim() || 'Admin',
+        }
+      );
 
-      toast.success(response.data.message || 'Photos uploaded! 📸');
+      toast.success(
+        response.data.message || 'Photos uploaded! 📸'
+      );
+
       setAdminPhotos([]);
-      const inputEl = document.getElementById('admin-photo-input');
-      if (inputEl) inputEl.value = '';
+
+      const inputEl = document.getElementById(
+        'admin-photo-input'
+      );
+
+      if (inputEl) {
+        inputEl.value = '';
+      }
+
       fetchPhotosData();
     } catch (err) {
-      toast.error('Upload failed.');
+      console.error('Photo upload error:', err);
+
+      toast.error(
+        err.response?.data?.error || 'Upload failed.'
+      );
     } finally {
       setUploadingPhotos(false);
     }
   };
 
+  // --------------------------------------------------
+  // DELETE PHOTO
+  // --------------------------------------------------
+
   const handleDeletePhoto = async (id, uploader) => {
-    if (!window.confirm(`Permanently delete photo by "${uploader}"?`)) return;
+    if (!id) {
+      toast.error('Photo ID is missing.');
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Permanently delete photo by "${uploader || 'Unknown'}"?`
+      )
+    ) {
+      return;
+    }
 
     try {
       await axios.delete(`${API_URL}/api/photos/${id}`);
+
       toast.success('Photo deleted.');
+
       fetchPhotosData();
     } catch (err) {
       toast.error('Failed to delete photo');
     }
   };
 
+  // --------------------------------------------------
+  // EXPORT GUEST LIST
+  // --------------------------------------------------
+
   const handleExportExcel = () => {
-    window.open(`${API_URL}/api/guests/export`, '_blank');
+    window.open(
+      `${API_URL}/api/guests/export`,
+      '_blank'
+    );
   };
 
-  const filteredGuests = guests.filter(g =>
-    g.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    g.unique_code.toLowerCase().includes(search.toLowerCase()) ||
-    g.phone.includes(search)
+  // --------------------------------------------------
+  // SAFE SEARCH FILTER
+  // --------------------------------------------------
+
+  const searchTerm = String(search || '').toLowerCase().trim();
+
+  const filteredGuests = guests.filter((guest) => {
+    const fullName = String(guest?.full_name || '').toLowerCase();
+    const uniqueCode = String(guest?.unique_code || '').toLowerCase();
+    const phone = String(guest?.phone || '').toLowerCase();
+
+    return (
+      fullName.includes(searchTerm) ||
+      uniqueCode.includes(searchTerm) ||
+      phone.includes(searchTerm)
+    );
+  });
+
+  // --------------------------------------------------
+  // SAFE STATISTICS
+  // --------------------------------------------------
+
+  const safeTotal = Math.max(0, Number(stats.total) || 0);
+  const safeCheckedIn = Math.max(
+    0,
+    Number(stats.checkedIn) || 0
+  );
+  const safeMaxLimit = Math.max(
+    0,
+    Number(stats.maxLimit) || 0
   );
 
-  const checkedInPercent = stats.total > 0 ? Math.round((stats.checkedIn / stats.total) * 100) : 0;
-  const capacityPercent = Math.round((stats.total / stats.maxLimit) * 100);
+  const checkedInPercent =
+    safeTotal > 0
+      ? Math.min(
+          100,
+          Math.round((safeCheckedIn / safeTotal) * 100)
+        )
+      : 0;
+
+  const capacityPercent =
+    safeMaxLimit > 0
+      ? Math.min(
+          100,
+          Math.round((safeTotal / safeMaxLimit) * 100)
+        )
+      : 0;
+
+  const remainingSlots = Math.max(
+    0,
+    safeMaxLimit - safeTotal
+  );
+
+  const pendingGuests = Math.max(
+    0,
+    safeTotal - safeCheckedIn
+  );
+
+  const remainingSlotsPercent =
+    safeMaxLimit > 0
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            (remainingSlots / safeMaxLimit) * 100
+          )
+        )
+      : 0;
+
+  // --------------------------------------------------
+  // LOGIN SCREEN
+  // --------------------------------------------------
 
   if (!authenticated) {
     return (
@@ -257,21 +558,26 @@ export default function Admin() {
           <div className="w-16 h-16 bg-[#4A151D]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#722F37]">
             <FiLock className="text-3xl" />
           </div>
+
           <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#4A151D] mb-2">
             Portal Access
           </h2>
+
           <p className="text-xs text-gray-500 mb-6">
-            Enter <strong>Master Admin</strong> or <strong>Usher Gate</strong> password
+            Enter <strong>Master Admin</strong> or{' '}
+            <strong>Usher Gate</strong> password
           </p>
+
           <input
             type="password"
             required
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password..."
             className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-[#722F37] focus:outline-none mb-5 text-center text-lg tracking-wider"
           />
-          <button 
+
+          <button
             type="submit"
             disabled={loggingIn}
             className="w-full bg-gradient-to-r from-[#722F37] to-[#4A151D] hover:from-[#5A252C] hover:to-[#3B1B0D] text-white py-3.5 rounded-xl font-bold tracking-widest uppercase transition-all shadow-lg cursor-pointer disabled:opacity-50"
@@ -283,17 +589,23 @@ export default function Admin() {
     );
   }
 
+  // --------------------------------------------------
+  // ADMIN DASHBOARD
+  // --------------------------------------------------
+
   return (
     <section className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-[#F8F9FA]">
       <div className="max-w-6xl mx-auto space-y-8">
-        
+
+        {/* HEADER */}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#4A151D]">
                 Wedding Control Center
               </h1>
-              
+
               {role === 'admin' ? (
                 <span className="inline-flex items-center gap-1 bg-[#722F37] text-[#F3E5AB] text-xs font-bold px-3 py-1 rounded-full shadow-sm">
                   <span>👑 Master Admin</span>
@@ -305,18 +617,26 @@ export default function Admin() {
                 </span>
               )}
             </div>
+
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
               Live updates active • Auto-syncing every 5 seconds
             </p>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={() => { fetchGuestData(); fetchPhotosData(); }}
+              onClick={() => {
+                fetchGuestData();
+                fetchPhotosData();
+              }}
               className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all cursor-pointer"
               title="Refresh Data"
             >
-              <FiRefreshCw className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`} />
+              <FiRefreshCw
+                className={`text-lg ${
+                  isRefreshing ? 'animate-spin' : ''
+                }`}
+              />
             </button>
 
             {role === 'admin' && (
@@ -364,13 +684,15 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* PASSWORD MODAL */}
+
         {showPasswordModal && role === 'admin' && (
-          <div 
+          <div
             onClick={() => setShowPasswordModal(false)}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           >
-            <div 
-              onClick={e => e.stopPropagation()}
+            <div
+              onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full border border-gray-200 relative"
             >
               <button
@@ -384,9 +706,15 @@ export default function Admin() {
                 <div className="w-10 h-10 bg-[#722F37]/10 text-[#722F37] rounded-full flex items-center justify-center text-xl">
                   <FiKey />
                 </div>
+
                 <div>
-                  <h3 className="text-lg font-bold text-[#4A151D]">Manage Passwords</h3>
-                  <p className="text-xs text-gray-400">Update Admin or Usher access codes</p>
+                  <h3 className="text-lg font-bold text-[#4A151D]">
+                    Manage Passwords
+                  </h3>
+
+                  <p className="text-xs text-gray-400">
+                    Update Admin or Usher access codes
+                  </p>
                 </div>
               </div>
 
@@ -395,61 +723,93 @@ export default function Admin() {
                   type="button"
                   onClick={() => setTargetRoleToChange('admin')}
                   className={`flex-1 py-2 rounded-lg transition-all ${
-                    targetRoleToChange === 'admin' ? 'bg-white shadow text-[#4A151D]' : 'text-gray-500'
+                    targetRoleToChange === 'admin'
+                      ? 'bg-white shadow text-[#4A151D]'
+                      : 'text-gray-500'
                   }`}
                 >
                   👑 Admin Password
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setTargetRoleToChange('usher')}
                   className={`flex-1 py-2 rounded-lg transition-all ${
-                    targetRoleToChange === 'usher' ? 'bg-white shadow text-[#4A151D]' : 'text-gray-500'
+                    targetRoleToChange === 'usher'
+                      ? 'bg-white shadow text-[#4A151D]'
+                      : 'text-gray-500'
                   }`}
                 >
                   🛡️ Usher Password
                 </button>
               </div>
 
-              <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
+              <form
+                onSubmit={handleChangePasswordSubmit}
+                className="space-y-4"
+              >
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
                     Your Current Admin Password
                   </label>
+
                   <input
                     type="password"
                     required
                     placeholder="Verify your admin identity..."
                     value={passForm.currentAdminPassword}
-                    onChange={e => setPassForm({ ...passForm, currentAdminPassword: e.target.value })}
+                    onChange={(e) =>
+                      setPassForm({
+                        ...passForm,
+                        currentAdminPassword: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#722F37] focus:outline-none text-sm"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
-                    New {targetRoleToChange === 'admin' ? 'Admin' : 'Usher'} Password
+                    New{' '}
+                    {targetRoleToChange === 'admin'
+                      ? 'Admin'
+                      : 'Usher'}{' '}
+                    Password
                   </label>
+
                   <input
                     type="password"
                     required
                     minLength={4}
                     placeholder="At least 4 characters..."
                     value={passForm.newPassword}
-                    onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })}
+                    onChange={(e) =>
+                      setPassForm({
+                        ...passForm,
+                        newPassword: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#722F37] focus:outline-none text-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Confirm New Password</label>
+                  <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
+                    Confirm New Password
+                  </label>
+
                   <input
                     type="password"
                     required
                     minLength={4}
                     placeholder="Re-type new password..."
                     value={passForm.confirmPassword}
-                    onChange={e => setPassForm({ ...passForm, confirmPassword: e.target.value })}
+                    onChange={(e) =>
+                      setPassForm({
+                        ...passForm,
+                        confirmPassword: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#722F37] focus:outline-none text-sm"
                   />
                 </div>
@@ -460,13 +820,17 @@ export default function Admin() {
                     disabled={changingPass}
                     className="w-full bg-[#722F37] hover:bg-[#4A151D] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md disabled:opacity-50 cursor-pointer"
                   >
-                    {changingPass ? 'Updating...' : `Save New ${targetRoleToChange.toUpperCase()} Password`}
+                    {changingPass
+                      ? 'Updating...'
+                      : `Save New ${targetRoleToChange.toUpperCase()} Password`}
                   </button>
                 </div>
               </form>
             </div>
           </div>
         )}
+
+        {/* TABS */}
 
         <div className="flex space-x-2 bg-gray-200/70 p-1.5 rounded-2xl max-w-md">
           <button
@@ -478,7 +842,7 @@ export default function Admin() {
             }`}
           >
             <FiUsers className="text-base" />
-            <span>Guests & Attendance ({stats.total})</span>
+            <span>Guests & Attendance ({safeTotal})</span>
           </button>
 
           <button
@@ -494,82 +858,148 @@ export default function Admin() {
           </button>
         </div>
 
+        {/* GUESTS TAB */}
+
         {activeTab === 'guests' && (
           <div className="space-y-8 animate-fade-in">
-            
+
+            {/* STATISTICS */}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              
+
+              {/* CHECKED IN */}
+
               <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white rounded-3xl p-6 shadow-lg relative overflow-hidden flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-widest text-emerald-200 font-bold">Checked In</span>
+                  <span className="text-xs uppercase tracking-widest text-emerald-200 font-bold">
+                    Checked In
+                  </span>
+
                   <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-xl">
                     <FiUserCheck />
                   </div>
                 </div>
+
                 <div className="my-4">
-                  <div className="text-4xl sm:text-5xl font-extrabold tracking-tight">{stats.checkedIn}</div>
-                  <p className="text-xs text-emerald-100 mt-1">{checkedInPercent}% present</p>
+                  <div className="text-4xl sm:text-5xl font-extrabold tracking-tight">
+                    {safeCheckedIn}
+                  </div>
+
+                  <p className="text-xs text-emerald-100 mt-1">
+                    {checkedInPercent}% present
+                  </p>
                 </div>
+
                 <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
-                  <div className="bg-white h-2 rounded-full transition-all duration-500" style={{ width: `${checkedInPercent}%` }}></div>
+                  <div
+                    className="bg-white h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${checkedInPercent}%` }}
+                  />
                 </div>
               </div>
 
+              {/* REGISTERED */}
+
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">Registered</span>
+                  <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+                    Registered
+                  </span>
+
                   <div className="w-10 h-10 bg-[#722F37]/10 text-[#722F37] rounded-2xl flex items-center justify-center text-xl">
                     <FiUsers />
                   </div>
                 </div>
+
                 <div className="my-4">
                   <div className="text-4xl sm:text-5xl font-extrabold text-[#4A151D] tracking-tight">
-                    {stats.total} <span className="text-lg text-gray-400 font-normal">/ {stats.maxLimit}</span>
+                    {safeTotal}{' '}
+                    <span className="text-lg text-gray-400 font-normal">
+                      / {safeMaxLimit}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{capacityPercent}% full</p>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    {capacityPercent}% full
+                  </p>
                 </div>
+
                 <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-[#722F37] h-2 rounded-full transition-all duration-500" style={{ width: `${capacityPercent}%` }}></div>
+                  <div
+                    className="bg-[#722F37] h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${capacityPercent}%` }}
+                  />
                 </div>
               </div>
 
+              {/* PENDING ARRIVAL */}
+
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">Pending Arrival</span>
+                  <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+                    Pending Arrival
+                  </span>
+
                   <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl">
                     <FiUserX />
                   </div>
                 </div>
+
                 <div className="my-4">
                   <div className="text-4xl sm:text-5xl font-extrabold text-amber-600 tracking-tight">
-                    {stats.total - stats.checkedIn}
+                    {pendingGuests}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Guests yet to arrive</p>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    Guests yet to arrive
+                  </p>
                 </div>
+
                 <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-amber-500 h-2 rounded-full transition-all duration-500" style={{ width: `${100 - checkedInPercent}%` }}></div>
+                  <div
+                    className="bg-amber-500 h-2 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.max(0, 100 - checkedInPercent)}%`,
+                    }}
+                  />
                 </div>
               </div>
 
+              {/* REMAINING SLOTS */}
+
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">Remaining Slots</span>
+                  <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+                    Remaining Slots
+                  </span>
+
                   <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl">
                     <FiCheckCircle />
                   </div>
                 </div>
+
                 <div className="my-4">
                   <div className="text-4xl sm:text-5xl font-extrabold text-[#5C2C16] tracking-tight">
-                    {stats.maxLimit - stats.total}
+                    {remainingSlots}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Available of {stats.maxLimit}</p>
+
+                  <p className="text-xs text-gray-500 mt-1">
+                    Available of {safeMaxLimit}
+                  </p>
                 </div>
+
                 <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-[#5C2C16] h-2 rounded-full transition-all duration-500" style={{ width: `${((stats.maxLimit - stats.total) / stats.maxLimit) * 100}%` }}></div>
+                  <div
+                    className="bg-[#5C2C16] h-2 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${remainingSlotsPercent}%`,
+                    }}
+                  />
                 </div>
               </div>
-
             </div>
+
+            {/* ADD GUEST FORM */}
 
             {showAddForm && role === 'admin' && (
               <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border-2 border-[#D4AF37]/50 max-w-2xl mx-auto relative animate-fade-in">
@@ -579,115 +1009,175 @@ export default function Admin() {
                 >
                   <FiX className="w-6 h-6" />
                 </button>
-                <h3 className="text-xl font-serif font-bold text-[#4A151D] mb-4">✍️ Add Guest Manually</h3>
-                <form onSubmit={handleAddGuestSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <h3 className="text-xl font-serif font-bold text-[#4A151D] mb-4">
+                  ✍️ Add Guest Manually
+                </h3>
+
+                <form
+                  onSubmit={handleAddGuestSubmit}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                >
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Full Legal Name</label>
+                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
+                      Full Legal Name
+                    </label>
+
                     <input
                       type="text"
                       required
                       placeholder="e.g. Chief Emeka Okonkwo"
                       value={newGuest.full_name}
-                      onChange={e => setNewGuest({ ...newGuest, full_name: e.target.value })}
+                      onChange={(e) =>
+                        setNewGuest({
+                          ...newGuest,
+                          full_name: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#722F37] focus:outline-none"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Phone Number</label>
+                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
+                      Phone Number
+                    </label>
+
                     <input
                       type="tel"
                       required
                       placeholder="e.g. 0803 123 4567"
                       value={newGuest.phone}
-                      onChange={e => setNewGuest({ ...newGuest, phone: e.target.value })}
+                      onChange={(e) =>
+                        setNewGuest({
+                          ...newGuest,
+                          phone: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#722F37] focus:outline-none"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Email (Optional)</label>
+                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
+                      Email (Optional)
+                    </label>
+
                     <input
                       type="email"
                       placeholder="e.g. emeka@vip.com"
                       value={newGuest.email}
-                      onChange={e => setNewGuest({ ...newGuest, email: e.target.value })}
+                      onChange={(e) =>
+                        setNewGuest({
+                          ...newGuest,
+                          email: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#722F37] focus:outline-none"
                     />
                   </div>
+
                   <div className="sm:col-span-2 mt-2">
                     <button
                       type="submit"
                       disabled={addingGuest}
-                      className="w-full bg-[#722F37] hover:bg-[#4A151D] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md cursor-pointer"
+                      className="w-full bg-[#722F37] hover:bg-[#4A151D] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
                     >
-                      {addingGuest ? 'Adding...' : 'Generate Code & Add Guest'}
+                      {addingGuest
+                        ? 'Adding...'
+                        : 'Generate Code & Add Guest'}
                     </button>
                   </div>
                 </form>
               </div>
             )}
 
+            {/* CHECK-IN AND SEARCH */}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
+
+              {/* CHECK-IN */}
+
               <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-100 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xl">🚪</span>
-                    <h3 className="text-lg font-bold text-[#4A151D]">Entrance Gate Check-In</h3>
+
+                    <h3 className="text-lg font-bold text-[#4A151D]">
+                      Entrance Gate Check-In
+                    </h3>
                   </div>
+
                   <p className="text-xs text-gray-500 mb-4">
                     Type visitor's 6-character code below to verify attendance.
                   </p>
                 </div>
 
-                <form onSubmit={handleCheckIn} className="flex gap-2">
+                <form
+                  onSubmit={handleCheckIn}
+                  className="flex gap-2"
+                >
                   <input
                     type="text"
                     required
                     maxLength={6}
                     value={checkInCode}
-                    onChange={e => setCheckInCode(e.target.value)}
+                    onChange={(e) => setCheckInCode(e.target.value)}
                     placeholder="e.g. 7K4P9N"
-                    className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-2xl focus:border-[#722F37] focus:outline-none uppercase font-mono text-center tracking-[0.2em] font-extrabold text-xl text-[#4A151D]"
+                    className="flex-1 min-w-0 px-4 py-3 border-2 border-gray-200 rounded-2xl focus:border-[#722F37] focus:outline-none uppercase font-mono text-center tracking-[0.2em] font-extrabold text-xl text-[#4A151D]"
                   />
+
                   <button
                     type="submit"
                     disabled={checkingIn}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-2xl transition-all tracking-wider text-xs uppercase cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-2xl transition-all tracking-wider text-xs uppercase cursor-pointer disabled:opacity-50"
                   >
                     {checkingIn ? 'Checking...' : 'Check-In'}
                   </button>
                 </form>
               </div>
 
+              {/* SEARCH */}
+
               <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-100 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xl">🔍</span>
-                    <h3 className="text-lg font-bold text-[#4A151D]">Search Attendance Roster</h3>
+
+                    <h3 className="text-lg font-bold text-[#4A151D]">
+                      Search Attendance Roster
+                    </h3>
                   </div>
+
                   <p className="text-xs text-gray-500 mb-4">
                     Find any attendee quickly by name, phone number, or code.
                   </p>
                 </div>
+
                 <div className="relative">
                   <input
                     type="text"
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search by name, phone, or code..."
                     className="w-full px-11 py-3.5 border-2 border-gray-200 rounded-2xl focus:border-[#722F37] focus:outline-none text-gray-800 text-sm"
                   />
+
                   <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
                 </div>
               </div>
-
             </div>
 
+            {/* ATTENDEE ROSTER */}
+
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-100 bg-[#4A151D]/5 flex items-center justify-between">
-                <h3 className="font-bold text-[#4A151D]">Attendee Roster ({filteredGuests.length} Guests)</h3>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
-                  {stats.checkedIn} Checked In
+              <div className="px-6 py-5 border-b border-gray-100 bg-[#4A151D]/5 flex items-center justify-between gap-3">
+                <h3 className="font-bold text-[#4A151D]">
+                  Attendee Roster ({filteredGuests.length} Guests)
+                </h3>
+
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full whitespace-nowrap">
+                  {safeCheckedIn} Checked In
                 </span>
               </div>
 
@@ -700,86 +1190,139 @@ export default function Admin() {
                       <th className="px-6 py-4">Phone Number</th>
                       <th className="px-6 py-4 text-center">Unique Code</th>
                       <th className="px-6 py-4 text-center">Status</th>
-                      {role === 'admin' && <th className="px-6 py-4 text-center">Remove</th>}
+
+                      {role === 'admin' && (
+                        <th className="px-6 py-4 text-center">
+                          Remove
+                        </th>
+                      )}
                     </tr>
                   </thead>
+
                   <tbody className="divide-y divide-gray-100 text-gray-700">
-                    {filteredGuests.map((g, index) => (
-                      <tr
-                        key={g._id || g.id}
-                        className={`hover:bg-gray-50/80 transition-colors ${
-                          g.checked_in ? 'bg-emerald-50/30' : ''
-                        }`}
-                      >
-                        <td className="px-6 py-4 text-center font-mono text-gray-400">{index + 1}</td>
-                        <td className="px-6 py-4 font-bold text-[#4a151d]">{g.full_name}</td>
-                        <td className="px-6 py-4 font-mono text-gray-600">{g.phone}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="bg-[#722F37] text-[#F3E5AB] px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wider shadow-sm">
-                            {g.unique_code}
-                          </span>
+                    {filteredGuests.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={role === 'admin' ? 6 : 5}
+                          className="px-6 py-12 text-center text-gray-400"
+                        >
+                          {searchTerm
+                            ? 'No guests match your search.'
+                            : 'No guests registered yet.'}
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          {g.checked_in ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
-                              <FiUserCheck className="text-sm" />
-                              <span>Checked In</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
-                              <FiUserX className="text-sm" />
-                              <span>Not Present</span>
-                            </span>
-                          )}
-                        </td>
-                        {role === 'admin' && (
-                          <td className="px-6 py-4 text-center">
-                            <button
-                              onClick={() => handleDeleteGuest(g._id || g.id, g.full_name)}
-                              className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition-colors cursor-pointer"
-                              title="Remove guest"
-                            >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        )}
                       </tr>
-                    ))}
+                    ) : (
+                      filteredGuests.map((g, index) => {
+                        const guestId = g?._id || g?.id;
+
+                        return (
+                          <tr
+                            key={guestId || `${g?.unique_code || 'guest'}-${index}`}
+                            className={`hover:bg-gray-50/80 transition-colors ${
+                              g?.checked_in
+                                ? 'bg-emerald-50/30'
+                                : ''
+                            }`}
+                          >
+                            <td className="px-6 py-4 text-center font-mono text-gray-400">
+                              {index + 1}
+                            </td>
+
+                            <td className="px-6 py-4 font-bold text-[#4a151d]">
+                              {g?.full_name || 'Unnamed Guest'}
+                            </td>
+
+                            <td className="px-6 py-4 font-mono text-gray-600">
+                              {g?.phone || '—'}
+                            </td>
+
+                            <td className="px-6 py-4 text-center">
+                              <span className="bg-[#722F37] text-[#F3E5AB] px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wider shadow-sm">
+                                {g?.unique_code || '—'}
+                              </span>
+                            </td>
+
+                            <td className="px-6 py-4 text-center">
+                              {g?.checked_in ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
+                                  <FiUserCheck className="text-sm" />
+                                  <span>Checked In</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+                                  <FiUserX className="text-sm" />
+                                  <span>Not Present</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {role === 'admin' && (
+                              <td className="px-6 py-4 text-center">
+                                <button
+                                  onClick={() =>
+                                    handleDeleteGuest(
+                                      guestId,
+                                      g?.full_name
+                                    )
+                                  }
+                                  disabled={!guestId}
+                                  className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition-colors cursor-pointer disabled:opacity-30"
+                                  title="Remove guest"
+                                >
+                                  <FiTrash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
-
           </div>
         )}
 
+        {/* PHOTOS TAB */}
+
         {activeTab === 'photos' && (
           <div className="space-y-8 animate-fade-in">
-            
+
+            {/* UPLOAD PHOTOS */}
+
             <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-100 max-w-2xl mx-auto">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-[#722F37]/10 text-[#722F37] rounded-full flex items-center justify-center text-xl">
                   <FiCamera />
                 </div>
+
                 <div>
                   <h3 className="text-lg font-bold text-[#4A151D]">
                     Add New Photos to Live Gallery
                   </h3>
+
                   <p className="text-xs text-gray-400">
                     Upload official wedding photos directly to the gallery
                   </p>
                 </div>
               </div>
 
-              <form onSubmit={handleAdminPhotoUpload} className="space-y-4">
+              <form
+                onSubmit={handleAdminPhotoUpload}
+                className="space-y-4"
+              >
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-500 mb-1">
                     Uploaded As
                   </label>
+
                   <input
                     type="text"
                     value={adminUploaderName}
-                    onChange={e => setAdminUploaderName(e.target.value)}
+                    onChange={(e) =>
+                      setAdminUploaderName(e.target.value)
+                    }
                     placeholder="e.g. Official Photographer / Bride & Groom"
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#722F37] focus:outline-none text-sm text-gray-800"
                   />
@@ -791,16 +1334,27 @@ export default function Admin() {
                     className="w-full flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#D4AF37]/60 rounded-2xl cursor-pointer hover:bg-[#FDFBF7] transition-colors text-center"
                   >
                     <FiUploadCloud className="text-3xl text-[#722F37] mb-2" />
+
                     <span className="text-xs sm:text-sm font-bold text-[#4A151D]">
-                      {adminPhotos.length > 0 ? `${adminPhotos.length} photo(s) selected` : 'Click to Select Photos'}
+                      {adminPhotos.length > 0
+                        ? `${adminPhotos.length} photo(s) selected`
+                        : 'Click to Select Photos'}
                     </span>
-                    <span className="text-[10px] text-gray-400 mt-1">Supports high-res PNG, JPG, WEBP</span>
+
+                    <span className="text-[10px] text-gray-400 mt-1">
+                      Supports high-res PNG, JPG, WEBP
+                    </span>
+
                     <input
                       id="admin-photo-input"
                       type="file"
                       multiple
                       accept="image/*"
-                      onChange={e => setAdminPhotos(Array.from(e.target.files))}
+                      onChange={(e) =>
+                        setAdminPhotos(
+                          Array.from(e.target.files || [])
+                        )
+                      }
                       className="hidden"
                     />
                   </label>
@@ -808,13 +1362,19 @@ export default function Admin() {
 
                 <button
                   type="submit"
-                  disabled={uploadingPhotos || adminPhotos.length === 0}
+                  disabled={
+                    uploadingPhotos || adminPhotos.length === 0
+                  }
                   className="w-full bg-[#722F37] hover:bg-[#4A151D] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-md disabled:opacity-50 cursor-pointer"
                 >
-                  {uploadingPhotos ? 'Uploading...' : 'Publish to Live Gallery 📸'}
+                  {uploadingPhotos
+                    ? 'Uploading...'
+                    : 'Publish to Live Gallery 📸'}
                 </button>
               </form>
             </div>
+
+            {/* CURRENT GALLERY */}
 
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
               <div className="flex items-center justify-between mb-6">
@@ -822,9 +1382,10 @@ export default function Admin() {
                   <h3 className="font-bold text-[#4A151D] text-lg">
                     Current Gallery Photos ({photos.length})
                   </h3>
+
                   <p className="text-xs text-gray-500">
-                    {role === 'admin' 
-                      ? 'Click the red delete icon on any photo to remove it permanently.' 
+                    {role === 'admin'
+                      ? 'Click the red delete icon on any photo to remove it permanently.'
                       : 'Live gallery stream for visitors.'}
                   </p>
                 </div>
@@ -833,50 +1394,70 @@ export default function Admin() {
               {photos.length === 0 ? (
                 <div className="text-center py-16 text-gray-400">
                   <FiCamera className="text-4xl mx-auto mb-2 text-gray-300" />
+
                   <p>No photos uploaded yet.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {photos.map(photo => (
-                    <div
-                      key={photo._id || photo.id}
-                      className="group relative bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-200 aspect-square flex flex-col justify-between"
-                    >
-                      <img
-                        src={photo.url}
-                        alt={photo.original_name || 'Wedding Moment'}
-                        className="w-full h-full object-cover"
-                      />
+                  {photos.map((photo, index) => {
+                    const photoId = photo?._id || photo?.id;
 
-                      {role === 'admin' && (
-                        <div className="absolute top-2 right-2 z-10">
-                          <button
-                            onClick={() => handleDeletePhoto(photo._id || photo.id, photo.uploaded_by)}
-                            className="w-8 h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg transition-transform transform active:scale-95 cursor-pointer"
-                            title="Delete photo permanently"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                    return (
+                      <div
+                        key={photoId || `photo-${index}`}
+                        className="group relative bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-200 aspect-square flex flex-col justify-between"
+                      >
+                        <img
+                          src={photo?.url || ''}
+                          alt={
+                            photo?.original_name ||
+                            'Wedding Moment'
+                          }
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+
+                        {role === 'admin' && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <button
+                              onClick={() =>
+                                handleDeletePhoto(
+                                  photoId,
+                                  photo?.uploaded_by
+                                )
+                              }
+                              disabled={!photoId}
+                              className="w-8 h-8 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg transition-transform transform active:scale-95 cursor-pointer disabled:opacity-30"
+                              title="Delete photo permanently"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="absolute inset-x-0 bottom-0 bg-black/75 p-2 text-white">
+                          <p className="text-[11px] font-bold truncate">
+                            {photo?.uploaded_by || 'Unknown uploader'}
+                          </p>
+
+                          <p className="text-[9px] text-white/70">
+                            {photo?.uploaded_at
+                              ? new Date(
+                                  photo.uploaded_at
+                                ).toLocaleDateString()
+                              : ''}
+                          </p>
                         </div>
-                      )}
-
-                      <div className="absolute inset-x-0 bottom-0 bg-black/75 p-2 text-white">
-                        <p className="text-[11px] font-bold truncate">
-                          {photo.uploaded_by}
-                        </p>
-                        <p className="text-[9px] text-white/70">
-                          {new Date(photo.uploaded_at).toLocaleDateString()}
-                        </p>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
-
           </div>
         )}
-
       </div>
     </section>
   );
