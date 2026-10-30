@@ -23,21 +23,18 @@ import {
 
 export default function Admin() {
   const [authenticated, setAuthenticated] = useState(false);
-  const [role, setRole] = useState('usher'); // 'admin' or 'usher'
+  const [role, setRole] = useState('usher');
   const [password, setPassword] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
-  const [activeTab, setActiveTab] = useState('guests'); // 'guests' or 'photos'
+  const [activeTab, setActiveTab] = useState('guests');
   
-  // ✅ API now lives on the same Vercel domain — no external URL needed
   const API_URL = '';
 
-  // Password Management States (For Master Admin only)
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [targetRoleToChange, setTargetRoleToChange] = useState('admin'); // 'admin' or 'usher'
+  const [targetRoleToChange, setTargetRoleToChange] = useState('admin');
   const [passForm, setPassForm] = useState({ currentAdminPassword: '', newPassword: '', confirmPassword: '' });
   const [changingPass, setChangingPass] = useState(false);
 
-  // Guest states
   const [guests, setGuests] = useState([]);
   const [stats, setStats] = useState({ total: 0, checkedIn: 0, maxLimit: 150 });
   const [checkInCode, setCheckInCode] = useState('');
@@ -45,18 +42,15 @@ export default function Admin() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Manual Add Guest States
   const [showAddForm, setShowAddForm] = useState(false);
   const [newGuest, setNewGuest] = useState({ full_name: '', phone: '', email: '' });
   const [addingGuest, setAddingGuest] = useState(false);
 
-  // Photo Management States
   const [photos, setPhotos] = useState([]);
   const [adminPhotos, setAdminPhotos] = useState([]);
   const [adminUploaderName, setAdminUploaderName] = useState('Admin (Official)');
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
-  // 1. AUTO-ROLE LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoggingIn(true);
@@ -64,7 +58,7 @@ export default function Admin() {
     try {
       const response = await axios.post(`${API_URL}/api/admin/login`, { password });
       setAuthenticated(true);
-      setRole(response.data.role); // 'admin' or 'usher'
+      setRole(response.data.role);
       fetchGuestData();
       fetchPhotosData();
       toast.success(response.data.message);
@@ -82,7 +76,6 @@ export default function Admin() {
     toast.info('Logged out.');
   };
 
-  // 2. CHANGE PASSWORD (MASTER ADMIN ONLY)
   const handleChangePasswordSubmit = async (e) => {
     e.preventDefault();
 
@@ -143,7 +136,6 @@ export default function Admin() {
     return () => clearInterval(interval);
   }, [authenticated]);
 
-  // GATE CHECK-IN LOGIC
   const handleCheckIn = async (e) => {
     e.preventDefault();
     if (!checkInCode) return;
@@ -163,7 +155,6 @@ export default function Admin() {
     }
   };
 
-  // MANUAL ADD GUEST LOGIC
   const handleAddGuestSubmit = async (e) => {
     e.preventDefault();
     setAddingGuest(true);
@@ -181,7 +172,6 @@ export default function Admin() {
     }
   };
 
-  // DELETE GUEST LOGIC (ADMIN ONLY)
   const handleDeleteGuest = async (id, name) => {
     if (!window.confirm(`Delete "${name}" from the list?`)) return;
 
@@ -194,7 +184,6 @@ export default function Admin() {
     }
   };
 
-  // ✅ UPDATED PHOTO UPLOAD — now converts files to base64 for Vercel serverless
   const handleAdminPhotoUpload = async (e) => {
     e.preventDefault();
     if (adminPhotos.length === 0) {
@@ -205,7 +194,6 @@ export default function Admin() {
     setUploadingPhotos(true);
 
     try {
-      // Convert each file to base64 (Vercel serverless can't handle FormData the same as Express)
       const photosData = await Promise.all(
         adminPhotos.map(file => {
           return new Promise((resolve, reject) => {
@@ -234,7 +222,6 @@ export default function Admin() {
     }
   };
 
-  // DELETE PHOTO (ADMIN ONLY)
   const handleDeletePhoto = async (id, uploader) => {
     if (!window.confirm(`Permanently delete photo by "${uploader}"?`)) return;
 
@@ -260,7 +247,6 @@ export default function Admin() {
   const checkedInPercent = stats.total > 0 ? Math.round((stats.checkedIn / stats.total) * 100) : 0;
   const capacityPercent = Math.round((stats.total / stats.maxLimit) * 100);
 
-  // 1. LOGIN VIEW
   if (!authenticated) {
     return (
       <section className="min-h-[85vh] flex items-center justify-center px-4 bg-[#FDFBF7]">
@@ -297,12 +283,10 @@ export default function Admin() {
     );
   }
 
-  // 2. MAIN DASHBOARD VIEW
   return (
     <section className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-[#F8F9FA]">
       <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* TOP BAR */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <div>
             <div className="flex items-center gap-3">
@@ -380,7 +364,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* 🔐 PASSWORD MANAGEMENT MODAL */}
         {showPasswordModal && role === 'admin' && (
           <div 
             onClick={() => setShowPasswordModal(false)}
@@ -485,7 +468,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB SWITCHER */}
         <div className="flex space-x-2 bg-gray-200/70 p-1.5 rounded-2xl max-w-md">
           <button
             onClick={() => setActiveTab('guests')}
@@ -512,16 +494,11 @@ export default function Admin() {
           </button>
         </div>
 
-        {/* ============================================================ */}
-        {/* TAB 1: GUESTS & ATTENDANCE MANAGEMENT */}
-        {/* ============================================================ */}
         {activeTab === 'guests' && (
           <div className="space-y-8 animate-fade-in">
             
-            {/* LIVE COUNTER CARDS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               
-              {/* Checked In */}
               <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white rounded-3xl p-6 shadow-lg relative overflow-hidden flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-widest text-emerald-200 font-bold">Checked In</span>
@@ -538,7 +515,6 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Total Registered */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">Registered</span>
@@ -557,7 +533,6 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Expected / Pending */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">Pending Arrival</span>
@@ -576,7 +551,6 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Slots left */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">Remaining Slots</span>
@@ -597,7 +571,6 @@ export default function Admin() {
 
             </div>
 
-            {/* EXPANDABLE ADD GUEST FORM (ADMIN ONLY) */}
             {showAddForm && role === 'admin' && (
               <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border-2 border-[#D4AF37]/50 max-w-2xl mx-auto relative animate-fade-in">
                 <button
@@ -653,10 +626,8 @@ export default function Admin() {
               </div>
             )}
 
-            {/* GATE CHECK-IN & SEARCH FILTER */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
-              {/* GATE CHECK-IN */}
               <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-100 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -688,7 +659,6 @@ export default function Admin() {
                 </form>
               </div>
 
-              {/* SEARCH */}
               <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-100 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -713,7 +683,6 @@ export default function Admin() {
 
             </div>
 
-            {/* ATTENDANCE TABLE */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-100 bg-[#4A151D]/5 flex items-center justify-between">
                 <h3 className="font-bold text-[#4A151D]">Attendee Roster ({filteredGuests.length} Guests)</h3>
@@ -784,13 +753,9 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* TAB 2: LIVE PHOTO GALLERY MANAGER */}
-        {/* ============================================================ */}
         {activeTab === 'photos' && (
           <div className="space-y-8 animate-fade-in">
             
-            {/* DIRECT PERMANENT UPLOAD CARD */}
             <div className="bg-white rounded-3xl shadow-sm p-6 sm:p-8 border border-gray-100 max-w-2xl mx-auto">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-[#722F37]/10 text-[#722F37] rounded-full flex items-center justify-center text-xl">
@@ -851,7 +816,6 @@ export default function Admin() {
               </form>
             </div>
 
-            {/* PHOTO MODERATION GRID */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
               <div className="flex items-center justify-between mb-6">
                 <div>

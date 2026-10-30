@@ -11,7 +11,6 @@ export default function RSVP() {
   const [copied, setCopied] = useState(false);
   const [slotsLeft, setSlotsLeft] = useState(null);
 
-  // ✅ API now lives on the same Vercel domain — no external URL needed
   const API_URL = '';
 
   const fetchSlots = async () => {
@@ -77,13 +76,10 @@ export default function RSVP() {
         backgroundRepeat: 'no-repeat',
       }}
     >
-      {/* Soft Vignette Overlay */}
       <div className="absolute inset-0 bg-black/15 pointer-events-none" />
 
-      {/* Main Content Container */}
       <div className="relative z-10 max-w-lg w-full mx-auto my-6">
         
-        {/* Title Header */}
         <div className="text-center mb-6">
           <p className="text-xs sm:text-sm uppercase tracking-[0.3em] text-[#F3E5AB] font-bold mb-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
             Attendance Confirmation
@@ -97,7 +93,6 @@ export default function RSVP() {
             <div className="h-[1px] w-12 bg-[#D4AF37]"></div>
           </div>
 
-          {/* Live Remaining Slots Badge */}
           {slotsLeft !== null && (
             <div className="inline-flex items-center gap-2 bg-[#4A151D]/80 backdrop-blur-md border border-[#D4AF37] text-[#F3E5AB] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-2 shadow-xl">
               <FiUsers className="text-sm text-[#D4AF37]" />
@@ -110,7 +105,6 @@ export default function RSVP() {
           </p>
         </div>
 
-        {/* 1. Semi-Transparent Glass Registration Form Card */}
         {!guestResult ? (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] p-6 sm:p-10 border border-white/60 animate-fade-in">
             
@@ -178,7 +172,6 @@ export default function RSVP() {
             </form>
           </div>
         ) : (
-          /* 2. Semi-Transparent Glass Success Result Card */
           <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] p-6 sm:p-10 border-2 border-[#D4AF37] text-center animate-fade-in">
             <div className="w-16 h-16 bg-green-100/90 text-green-700 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner">
               <FiCheckCircle />
