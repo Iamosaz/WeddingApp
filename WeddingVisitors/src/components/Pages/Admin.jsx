@@ -28,8 +28,8 @@ export default function Admin() {
   const [loggingIn, setLoggingIn] = useState(false);
   const [activeTab, setActiveTab] = useState('guests'); // 'guests' or 'photos'
   
-  // Dynamic API Base URL for local & production
-  const API_URL = import.meta.env.VITE_API_URL || '';
+  // ✅ API now lives on the same Vercel domain — no external URL needed
+  const API_URL = '';
 
   // Password Management States (For Master Admin only)
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -194,7 +194,7 @@ export default function Admin() {
     }
   };
 
-  // PHOTO UPLOAD
+  // ✅ UPDATED PHOTO UPLOAD — now converts files to base64 for Vercel serverless
   const handleAdminPhotoUpload = async (e) => {
     e.preventDefault();
     if (adminPhotos.length === 0) {
@@ -203,14 +203,25 @@ export default function Admin() {
     }
 
     setUploadingPhotos(true);
-    const formData = new FormData();
-    adminPhotos.forEach(file => formData.append('photos', file));
-    formData.append('uploaded_by', adminUploaderName.trim() || 'Admin');
 
     try {
-      const response = await axios.post(`${API_URL}/api/photos/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      // Convert each file to base64 (Vercel serverless can't handle FormData the same as Express)
+      const photosData = await Promise.all(
+        adminPhotos.map(file => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ data: reader.result, name: file.name });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      const response = await axios.post(`${API_URL}/api/photos/upload`, {
+        photos: photosData,
+        uploaded_by: adminUploaderName.trim() || 'Admin',
       });
+
       toast.success(response.data.message || 'Photos uploaded! 📸');
       setAdminPhotos([]);
       const inputEl = document.getElementById('admin-photo-input');
@@ -868,7 +879,7 @@ export default function Admin() {
                       className="group relative bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-200 aspect-square flex flex-col justify-between"
                     >
                       <img
-                        src={photo.url || (photo.filename ? `${API_URL}/uploads/${photo.filename}` : '')}
+                        src={photo.url}
                         alt={photo.original_name || 'Wedding Moment'}
                         className="w-full h-full object-cover"
                       />

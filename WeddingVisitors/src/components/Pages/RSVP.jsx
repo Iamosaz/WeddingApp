@@ -11,7 +11,8 @@ export default function RSVP() {
   const [copied, setCopied] = useState(false);
   const [slotsLeft, setSlotsLeft] = useState(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || '';
+  // ✅ API now lives on the same Vercel domain — no external URL needed
+  const API_URL = '';
 
   const fetchSlots = async () => {
     try {
