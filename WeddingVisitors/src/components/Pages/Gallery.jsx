@@ -10,8 +10,7 @@ import {
   FiRefreshCw, 
   FiHeart,
   FiPrinter,
-  FiDownload,
-  FiCloud
+  FiDownload
 } from 'react-icons/fi';
 import { HiOutlineQrcode } from 'react-icons/hi';
 
@@ -19,69 +18,34 @@ export default function Gallery() {
   const [photos, setPhotos] = useState([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [uploaderName, setUploaderName] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [activePhoto, setActivePhoto] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
 
-  // ✅ SANITIZE API URL: Automatically prevents double-slash errors (e.g., "onrender.com//api")
-  const rawApiUrl = import.meta.env.VITE_API_URL || '';
-  const API_URL = rawApiUrl.endsWith('/') ? rawApiUrl.slice(0, -1) : rawApiUrl;
+  // Same-domain API (Vercel serverless)
+  const API_URL = '';
 
-  // ✅ GET LIVE SITE URL (Priority: Environment Key > Browser URL > Fallback)
-  const SITE_URL = import.meta.env.VITE_SITE_URL || 
-    (typeof window !== 'undefined' && !window.location.origin.includes('localhost') 
-      ? window.location.origin 
-      : 'https://preciousandbright.com');
+  // Live site URL for QR code
+  const SITE_URL = typeof window !== 'undefined' && !window.location.origin.includes('localhost') 
+    ? window.location.origin 
+    : 'https://preciousandbright.com';
   const galleryUrl = `${SITE_URL}/gallery`;
 
-  // Dynamic QR Code pointing to live site URL
   const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(galleryUrl)}&color=4A151D&bgcolor=FFFFFF&margin=10`;
 
-  // Fetch all photos from the database
   const fetchPhotos = async (silent = false) => {
     try {
       if (!silent) setLoadingPhotos(true);
-      
-      console.log(`📡 Requesting API: ${API_URL}/api/photos/all`);
       const { data } = await axios.get(`${API_URL}/api/photos/all`);
       setPhotos(data);
-
-      // AUTO-RECOVERY: Sync immediately from Cloudinary if database is clean & empty
-      if (data.length === 0 && !silent) {
-        try {
-          const syncResponse = await axios.get(`${API_URL}/api/photos/sync`);
-          if (syncResponse.data.restored > 0) {
-            const { data: restoredData } = await axios.get(`${API_URL}/api/photos/all`);
-            setPhotos(restoredData);
-            toast.success(`✨ ${syncResponse.data.restored} moments restored from Cloudinary!`);
-          }
-        } catch (syncErr) {
-          console.log('Auto-recovery deferred:', syncErr.message);
-        }
-      }
     } catch (err) {
-      console.error('❌ API Request Failed:', err);
+      console.error('API Request Failed:', err);
       if (!silent) {
         toast.error('Could not connect to database. Please refresh.');
       }
     } finally {
       if (!silent) setLoadingPhotos(false);
-    }
-  };
-
-  // Manual Cloudinary Sync
-  const handleCloudinarySync = async () => {
-    try {
-      setSyncing(true);
-      const { data } = await axios.get(`${API_URL}/api/photos/sync`);
-      toast.success(data.message || `${data.restored} photos restored!`);
-      await fetchPhotos(true);
-    } catch (err) {
-      toast.error('Restore failed. Check backend server connection.');
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -99,6 +63,20 @@ export default function Gallery() {
     }
   };
 
+  // Convert files to base64 for serverless upload
+  const filesToBase64 = (files) => {
+    return Promise.all(
+      files.map(file => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve({ data: reader.result, name: file.name });
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      })
+    );
+  };
+
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (selectedFiles.length === 0) {
@@ -107,15 +85,11 @@ export default function Gallery() {
     }
 
     setUploading(true);
-    const formData = new FormData();
-    selectedFiles.forEach((file) => {
-      formData.append('photos', file);
-    });
-    formData.append('uploaded_by', uploaderName.trim() || 'A Loved Guest');
-
     try {
-      const response = await axios.post(`${API_URL}/api/photos/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const photosData = await filesToBase64(selectedFiles);
+      const response = await axios.post(`${API_URL}/api/photos/upload`, {
+        photos: photosData,
+        uploaded_by: uploaderName.trim() || 'A Loved Guest'
       });
       toast.success(response.data.message || 'Photos uploaded successfully! 🎉');
       setSelectedFiles([]);
@@ -140,7 +114,6 @@ export default function Gallery() {
     <section className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#FDFBF7] via-[#FFF9F2] to-[#FDFBF7]">
       <div className="max-w-6xl mx-auto">
         
-        {/* Title Header */}
         <div className="text-center max-w-2xl mx-auto mb-10">
           <span className="text-xs uppercase tracking-[0.3em] text-[#722F37] font-semibold">
             Captured Moments
@@ -157,7 +130,6 @@ export default function Gallery() {
             Snap, upload, and share your favorite moments with Precious & Bright. Every guest can view your photos live!
           </p>
 
-          {/* Table QR Code Button */}
           <button
             onClick={() => setShowQrModal(true)}
             className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#c49f2e] text-[#4A151D] px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider shadow-md transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
@@ -167,7 +139,6 @@ export default function Gallery() {
           </button>
         </div>
 
-        {/* Guest Upload Section */}
         <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 mb-12 border border-[#D4AF37]/30 max-w-xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-[#722F37]/10 text-[#722F37] rounded-full flex items-center justify-center text-xl">
@@ -212,7 +183,7 @@ export default function Gallery() {
                     : 'Tap here to Choose or Take Photos'}
                 </span>
                 <span className="text-[11px] text-gray-400 mt-1">
-                  High-res phone photos supported (up to 25MB each)
+                  High-res phone photos supported
                 </span>
                 <input
                   id="photo-input"
@@ -248,34 +219,20 @@ export default function Gallery() {
           </form>
         </div>
 
-        {/* Gallery Grid Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <h2 className="text-xl font-serif font-bold text-[#4A151D]">
             All Moments ({photos.length})
           </h2>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCloudinarySync}
-              disabled={syncing}
-              title="Restore all photos from Cloudinary backup"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:bg-[#4A151D] bg-[#722F37] px-4 py-2 rounded-full border border-[#4A151D] shadow-sm transition-all cursor-pointer disabled:opacity-50"
-            >
-              <FiCloud className={syncing ? 'animate-pulse' : ''} />
-              <span>{syncing ? 'Restoring...' : 'Restore from Cloud'}</span>
-            </button>
-
-            <button
-              onClick={() => fetchPhotos()}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#722F37] hover:text-[#4A151D] bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm transition-all cursor-pointer"
-            >
-              <FiRefreshCw className={loadingPhotos ? 'animate-spin' : ''} />
-              <span>Refresh</span>
-            </button>
-          </div>
+          <button
+            onClick={() => fetchPhotos()}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#722F37] hover:text-[#4A151D] bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm transition-all cursor-pointer"
+          >
+            <FiRefreshCw className={loadingPhotos ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
         </div>
 
-        {/* Gallery Grid */}
         {photos.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm border border-gray-100">
             <div className="w-16 h-16 bg-[#722F37]/5 text-[#722F37] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
@@ -287,9 +244,6 @@ export default function Gallery() {
             <p className="text-xs text-gray-500 mb-4">
               Be the first guest to snap a photo and post it to the gallery!
             </p>
-            <p className="text-[10px] text-gray-400">
-              If photos existed before, click "Restore from Cloud" above to recover them.
-            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
@@ -300,7 +254,7 @@ export default function Gallery() {
                 className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 aspect-square cursor-pointer border border-[#D4AF37]/20"
               >
                 <img
-                  src={photo.url || (photo.filename ? `${API_URL}/uploads/${photo.filename}` : '')}
+                  src={photo.url}
                   alt={photo.original_name || 'Wedding Photo'}
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -324,7 +278,6 @@ export default function Gallery() {
           </div>
         )}
 
-        {/* Full-Screen Lightbox Modal */}
         {activePhoto && (
           <div
             onClick={() => setActivePhoto(null)}
@@ -342,7 +295,7 @@ export default function Gallery() {
               className="max-w-4xl max-h-[90vh] flex flex-col items-center"
             >
               <img
-                src={activePhoto.url || (activePhoto.filename ? `${API_URL}/uploads/${activePhoto.filename}` : '')}
+                src={activePhoto.url}
                 alt="Enlarged wedding moment"
                 className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10"
               />
@@ -358,7 +311,6 @@ export default function Gallery() {
           </div>
         )}
 
-        {/* Printable QR Code Modal */}
         {showQrModal && (
           <div
             onClick={() => setShowQrModal(false)}
@@ -403,13 +355,6 @@ export default function Gallery() {
               <p className="text-[11px] text-gray-500 font-mono mb-5 truncate px-2">
                 {galleryUrl}
               </p>
-
-              {/* Warning helper if hosted locally */}
-              {galleryUrl.includes('localhost') && (
-                <p className="text-[10px] text-red-500 font-bold bg-red-50 p-2 rounded-lg mb-3 border border-red-200">
-                  ⚠️ Set VITE_SITE_URL in .env to use your production URL!
-                </p>
-              )}
 
               <div className="flex gap-2">
                 <button
