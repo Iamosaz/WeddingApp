@@ -1,66 +1,36 @@
-import { v2 as cloudinary } from 'cloudinary';
-import { connectDB, Photo } from '../_lib/database.js';
+import mongoose from 'mongoose';
 
-// Reads CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.
-// (If you set a single CLOUDINARY_URL instead, Cloudinary picks it up by itself.)
-if (process.env.CLOUDINARY_CLOUD_NAME) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
+const guestSchema = new mongoose.Schema({
+  full_name: { type: String, required: true },
+  phone: { type: String, required: true, unique: true },
+  email: { type: String, default: null },
+  unique_code: { type: String, required: true, unique: true },
+  checked_in: { type: Boolean, default: false },
+  registered_at: { type: Date, default: Date.now },
+  checked_in_at: { type: Date, default: null }
+});
+
+const photoSchema = new mongoose.Schema({a
+  url: { type: String, required: true },
+  public_id: { type: String, default: null },
+  original_name: { type: String, default: 'wedding-moment.jpg' },
+  uploaded_by: { type: String, default: 'A Loved Guest' },
+  uploaded_at: { type: Date, default: Date.now }
+});
+
+const adminSchema = new mongoose.Schema({
+  admin_password: { type: String, default: 'admin2026' },
+  usher_password: { type: String, default: 'usher2026' }
+});
+
+const Guest = mongoose.models.Guest || mongoose.model('Guest', guestSchema);
+const Photo = mongoose.models.Photo || mongoose.model('Photo', photoSchema);
+const Settings = mongoose.models.Settings || mongoose.model('Settings', adminSchema);
+
+async function connectDB() {
+  if (mongoose.connection.readyState >= 1) return;
+  if (!process.env.MONGO_URI) throw new Error('MONGO_URI is missing');
+  await mongoose.connect(process.env.MONGO_URI);
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  try {
-    await connectDB();
-
-    const { photos, uploaded_by } = req.body || {};
-
-    if (!Array.isArray(photos) || photos.length === 0) {
-      return res.status(400).json({ error: 'No photos received' });
-    }
-
-    const uploader = (uploaded_by || 'A Loved Guest').toString().slice(0, 60);
-    const saved = [];
-
-    for (const item of photos.slice(0, 10)) {
-      if (!item || typeof item.data !== 'string' || !item.data.startsWith('data:image/')) {
-        continue;
-      }
-
-      const result = await cloudinary.uploader.upload(item.data, {
-        folder: 'wedding_gallery',
-        resource_type: 'image',
-      });
-
-      const doc = await Photo.create({
-        url: result.secure_url,
-        public_id: result.public_id,
-        original_name: item.name || 'wedding-moment.jpg',
-        uploaded_by: uploader,
-      });
-
-      saved.push(doc);
-    }
-
-    if (saved.length === 0) {
-      return res.status(400).json({ error: 'No valid images found' });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: `${saved.length} photo(s) uploaded successfully! 🎉`,
-      photos: saved,
-    });
-  } catch (err) {
-    console.error('UPLOAD ERROR:', err);
-    // "detail" is for debugging; remove it once uploads work.
-    return res.status(500).json({ error: 'Upload failed', detail: err.message });
-  }
-}
+export { connectDB, Guest, Photo, Settings };
